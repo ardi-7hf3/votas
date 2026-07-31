@@ -2,9 +2,9 @@
  * App.jsx — Sistem Voting
  * Semua state, logic, dan render UI ada di satu file ini (sesuai struktur project).
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
-import { accounts, votingOptions, adminAccount } from './data'
+import { accounts, adminAccount } from './data'
 
 export default function App() {
   // ---------- STATE ----------
@@ -22,8 +22,28 @@ export default function App() {
   const [votingResults, setVotingResults] = useState([]) // statistik per pilihan (+ persentase)
   const [totalVotes, setTotalVotes] = useState(0)
   const [allVotes, setAllVotes] = useState([]) // data mentah semua vote, untuk tabel & export CSV
+  const [votingOptions, setVotingOptions] = useState([]) // sekarang dari Supabase, bukan hardcoded
+  const [optionForm, setOptionForm] = useState({ id: null, title: '', description: '', icon: '' }) // form tambah/edit pilihan (admin)
+
+  // Muat pilihan voting sekali saat app dibuka
+  useEffect(() => {
+    fetchVotingOptions()
+  }, [])
 
   // ---------- FUNCTIONS ----------
+
+  // Ambil daftar pilihan voting dari Supabase
+  const fetchVotingOptions = async () => {
+    try {
+      const { data, error: err } = await supabase.from('voting_options').select('*').order('id', { ascending: true })
+
+      if (err) throw err
+      setVotingOptions(data || [])
+    } catch (err) {
+      console.error(err)
+      setError('Gagal memuat pilihan voting.')
+    }
+  }
 
   // Cek apakah nama ini sudah pernah voting
   const checkVoteStatus = async (nama) => {
@@ -81,6 +101,7 @@ export default function App() {
       setIsAdmin(true)
       setIsLoggedIn(true)
       setPage('admin')
+      await fetchVotingOptions()
       await fetchAllVotes() // fetchAllVotes yang akan matikan loading di akhir
     } else {
       setError('Username atau password admin salah!')
@@ -162,6 +183,7 @@ export default function App() {
     setVotingResults([])
     setTotalVotes(0)
     setAllVotes([])
+    setOptionForm({ id: null, title: '', description: '', icon: '' })
   }
 
   const toggleAdminLogin = () => {
@@ -188,6 +210,124 @@ export default function App() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+  }
+
+  // Reset form tambah/edit pilihan voting
+  const resetOptionForm = () => {
+    setOptionForm({ id: null, title: '', description: '', icon: '' })
+  }
+
+  // Mulai mode edit: isi form dengan data pilihan yang dipilih
+  const handleEditOption = (option) => {
+    setOptionForm({
+      id: option.id,
+      title: option.title,
+      description: option.description || '',
+      icon: option.icon,
+    })
+    setError('')
+  }
+
+  // Tambah pilihan voting baru
+  const handleAddOption = async (e) => {
+    e.preventDefault()
+    if (!optionForm.title.trim() || !optionForm.icon.trim()) {
+      setError('Judul dan icon pilihan wajib diisi.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const { error: err } = await supabase.from('voting_options').insert([
+        {
+          title: optionForm.title.trim(),
+          description: optionForm.description.trim(),
+          icon: optionForm.icon.trim(),
+        },
+      ])
+
+      if (err) throw err
+      resetOptionForm()
+      await fetchVotingOptions()
+    } catch (err) {
+      console.error(err)
+      setError('Gagal menambah pilihan voting.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Simpan perubahan pilihan voting yang sedang diedit
+  const handleUpdateOption = async (e) => {
+    e.preventDefault()
+    if (!optionForm.title.trim() || !optionForm.icon.trim()) {
+      setError('Judul dan icon pilihan wajib diisi.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    try {
+      const oldOption = votingOptions.find((o) => o.id === optionForm.id)
+      const newTitle = optionForm.title.trim()
+
+      const { error: err } = await supabase
+        .from('voting_options')
+        .update({
+          title: newTitle,
+          description: optionForm.description.trim(),
+          icon: optionForm.icon.trim(),
+        })
+        .eq('id', optionForm.id)
+
+      if (err) throw err
+
+      // Kalau judul berubah, sinkronkan juga ke suara lama biar histori tetap nyambung
+      if (oldOption && oldOption.title !== newTitle) {
+        await supabase.from('votes').update({ pilihan: newTitle }).eq('pilihan', oldOption.title)
+      }
+
+      resetOptionForm()
+      await fetchVotingOptions()
+    } catch (err) {
+      console.error(err)
+      setError('Gagal menyimpan perubahan pilihan.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Hapus pilihan voting (dengan konfirmasi, dan peringatan kalau sudah ada suara masuk)
+  const handleDeleteOption = async (option) => {
+    let voteCount = 0
+    try {
+      const { count } = await supabase
+        .from('votes')
+        .select('*', { count: 'exact', head: true })
+        .eq('pilihan', option.title)
+      voteCount = count || 0
+    } catch (err) {
+      console.error(err)
+    }
+
+    const confirmMsg =
+      voteCount > 0
+        ? `"${option.title}" sudah punya ${voteCount} suara masuk. Suara lama tidak akan hilang, tapi tidak akan tampil lagi di statistik. Tetap hapus?`
+        : `Hapus pilihan "${option.title}"?`
+
+    if (!window.confirm(confirmMsg)) return
+
+    setLoading(true)
+    setError('')
+    try {
+      const { error: err } = await supabase.from('voting_options').delete().eq('id', option.id)
+      if (err) throw err
+      await fetchVotingOptions()
+    } catch (err) {
+      console.error(err)
+      setError('Gagal menghapus pilihan voting.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   // ---------- RENDER: LOGIN ----------
@@ -277,18 +417,22 @@ export default function App() {
         <h1>Halo, {currentUser?.nama}! 👋</h1>
         <p>Silakan pilih salah satu opsi di bawah ini</p>
       </div>
-      <div className="voting-grid">
-        {votingOptions.map((option) => (
-          <div key={option.id} className="vote-card" onClick={() => !loading && handleVote(option)}>
-            <div className="vote-icon">{option.icon}</div>
-            <h3>{option.title}</h3>
-            <p>{option.description}</p>
-            <button className="btn btn-vote" disabled={loading}>
-              {loading ? 'Memproses...' : 'Pilih'}
-            </button>
-          </div>
-        ))}
-      </div>
+      {votingOptions.length === 0 ? (
+        <p className="empty-text">Pilihan voting belum tersedia. Coba refresh halaman.</p>
+      ) : (
+        <div className="voting-grid">
+          {votingOptions.map((option) => (
+            <div key={option.id} className="vote-card" onClick={() => !loading && handleVote(option)}>
+              <div className="vote-icon">{option.icon}</div>
+              <h3>{option.title}</h3>
+              <p>{option.description}</p>
+              <button className="btn btn-vote" disabled={loading}>
+                {loading ? 'Memproses...' : 'Pilih'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       {error && <p className="error-message center">{error}</p>}
     </div>
   )
@@ -366,6 +510,72 @@ export default function App() {
                 <p className="stat-percentage">{r.percentage}%</p>
               </div>
             ))}
+          </div>
+
+          <div className="table-section options-section">
+            <div className="table-header">
+              <h2>Kelola Pilihan Voting</h2>
+            </div>
+
+            <form onSubmit={optionForm.id ? handleUpdateOption : handleAddOption} className="option-form">
+              <div className="option-form-row">
+                <input
+                  type="text"
+                  value={optionForm.icon}
+                  onChange={(e) => setOptionForm({ ...optionForm, icon: e.target.value })}
+                  placeholder="🎮"
+                  className="option-icon-input"
+                  maxLength={4}
+                  required
+                />
+                <input
+                  type="text"
+                  value={optionForm.title}
+                  onChange={(e) => setOptionForm({ ...optionForm, title: e.target.value })}
+                  placeholder="Judul pilihan"
+                  required
+                />
+              </div>
+              <textarea
+                value={optionForm.description}
+                onChange={(e) => setOptionForm({ ...optionForm, description: e.target.value })}
+                placeholder="Deskripsi singkat (opsional)"
+              />
+              <div className="option-form-actions">
+                <button type="submit" className="btn btn-primary-sm" disabled={loading}>
+                  {optionForm.id ? 'Simpan Perubahan' : '+ Tambah Pilihan'}
+                </button>
+                {optionForm.id && (
+                  <button type="button" className="btn btn-gray-sm" onClick={resetOptionForm}>
+                    Batal
+                  </button>
+                )}
+              </div>
+            </form>
+
+            {votingOptions.length === 0 ? (
+              <p className="empty-text">Belum ada pilihan voting</p>
+            ) : (
+              <div className="options-list">
+                {votingOptions.map((opt) => (
+                  <div key={opt.id} className="option-row">
+                    <span className="option-row-icon">{opt.icon}</span>
+                    <div className="option-row-text">
+                      <strong>{opt.title}</strong>
+                      {opt.description && <p>{opt.description}</p>}
+                    </div>
+                    <div className="option-row-actions">
+                      <button className="icon-btn" onClick={() => handleEditOption(opt)} title="Edit">
+                        ✏️
+                      </button>
+                      <button className="icon-btn" onClick={() => handleDeleteOption(opt)} title="Hapus">
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="table-section">

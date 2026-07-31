@@ -461,6 +461,133 @@ input:focus-visible {
   padding: var(--space-6);
 }
 
+.options-section {
+  margin-bottom: var(--space-8);
+}
+
+.btn-gray-sm {
+  background: var(--white);
+  color: var(--text-tertiary);
+  border: 1px solid var(--neutral-lighter);
+  width: auto;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-5);
+  font-size: 13px;
+  box-shadow: none;
+}
+.btn-gray-sm:hover:not(:disabled) {
+  background: var(--surface-gray);
+}
+
+.option-form {
+  background: var(--surface-subtle);
+  border: 1px solid var(--neutral-lighter);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.option-form-row {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.option-form input,
+.option-form textarea {
+  padding: 10px 14px;
+  border: 1px solid var(--neutral-light);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: var(--font-primary);
+  width: 100%;
+  color: var(--text-primary);
+}
+
+.option-icon-input {
+  width: 64px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 18px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.option-form textarea {
+  resize: vertical;
+  min-height: 56px;
+  margin-bottom: var(--space-3);
+}
+
+.option-form input:focus,
+.option-form textarea:focus {
+  outline: none;
+  border-color: var(--primary-600);
+  box-shadow: var(--focus-ring);
+}
+
+.option-form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.option-form-actions .btn {
+  width: auto;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--neutral-lighter);
+  border-radius: var(--radius-md);
+}
+
+.option-row-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.option-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.option-row-text strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+.option-row-text p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.option-row-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.icon-btn:hover {
+  background: var(--surface-gray);
+}
+
 .table-header {
   display: flex;
   justify-content: space-between;
