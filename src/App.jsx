@@ -27,6 +27,8 @@ const BTN_GRAY_SM =
   'inline-flex min-h-10 w-auto cursor-pointer items-center justify-center gap-2 rounded-full border border-neutral-lighter bg-white px-5 py-2 text-[13px] font-extrabold leading-[21px] text-text-tertiary transition duration-200 hover:enabled:bg-surface-gray active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
 const BTN_DANGER_SM =
   'inline-flex min-h-10 w-auto cursor-pointer items-center justify-center gap-2 rounded-full border border-danger-bg bg-danger-bg px-5 py-2 text-[13px] font-extrabold leading-[21px] text-danger transition duration-200 hover:enabled:border-danger hover:enabled:bg-danger hover:enabled:text-white active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
+const BTN_DANGER =
+  'inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-danger px-7 py-3.5 text-[14.4px] font-extrabold leading-[21px] text-white shadow-btn transition duration-200 hover:enabled:opacity-[0.92] hover:enabled:shadow-btn-hover active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
 const LINK_BUTTON =
   'mt-4 block w-full cursor-pointer rounded-md bg-transparent py-2 text-center text-sm font-semibold text-primary-600 hover:underline'
 const INPUT_FIELD =
@@ -276,6 +278,44 @@ function TopBar() {
   )
 }
 
+// Modal konfirmasi custom (pengganti window.confirm bawaan browser yang tampilannya nggak matching)
+function ConfirmModal({ open, title, message, confirmText, onConfirm, onCancel }) {
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (e) => e.key === 'Escape' && onCancel()
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, onCancel])
+
+  if (!open) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onCancel}
+    >
+      <div
+        className="fade-in-up w-full max-w-sm rounded-xl bg-white p-6 text-center shadow-elevated"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-bg text-danger">
+          <Trash2 size={22} />
+        </div>
+        <h3 className="mb-2 text-lg">{title}</h3>
+        <p className="mb-6 text-sm leading-6 text-text-secondary">{message}</p>
+        <div className="flex gap-3">
+          <button className={`${BTN_GRAY} flex-1`} onClick={onCancel}>
+            Batal
+          </button>
+          <button className={`${BTN_DANGER} flex-1`} onClick={onConfirm} autoFocus>
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   // ---------- STATE ----------
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -291,6 +331,7 @@ export default function App() {
   const [showAdminLogin, setShowAdminLogin] = useState(false)
   const [showStudentPassword, setShowStudentPassword] = useState(false)
   const [showAdminPassword, setShowAdminPassword] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState(null) // { title, message, confirmText, onConfirm } | null
   const [votingResults, setVotingResults] = useState([]) // statistik per pilihan (+ persentase)
   const [totalVotes, setTotalVotes] = useState(0)
   const [allVotes, setAllVotes] = useState([]) // data mentah semua vote, untuk tabel & export CSV
@@ -605,13 +646,21 @@ export default function App() {
       console.error(err)
     }
 
-    const confirmMsg =
+    const message =
       voteCount > 0
         ? `"${option.title}" sudah punya ${voteCount} suara masuk. Suara lama tidak akan hilang, tapi tidak akan tampil lagi di statistik. Tetap hapus?`
         : `Hapus pilihan "${option.title}"?`
 
-    if (!window.confirm(confirmMsg)) return
+    setConfirmDialog({
+      title: 'Hapus Pilihan Voting?',
+      message,
+      confirmText: 'Ya, Hapus',
+      onConfirm: () => doDeleteOption(option),
+    })
+  }
 
+  const doDeleteOption = async (option) => {
+    setConfirmDialog(null)
     setLoading(true)
     setError('')
     try {
@@ -627,9 +676,17 @@ export default function App() {
   }
 
   // Hapus satu data voting (dengan konfirmasi)
-  const handleDeleteVote = async (vote) => {
-    if (!window.confirm(`Hapus suara dari "${vote.nama}" (pilihan: ${vote.pilihan})?`)) return
+  const handleDeleteVote = (vote) => {
+    setConfirmDialog({
+      title: 'Hapus Suara Ini?',
+      message: `Hapus suara dari "${vote.nama}" (pilihan: ${vote.pilihan})?`,
+      confirmText: 'Ya, Hapus',
+      onConfirm: () => doDeleteVote(vote),
+    })
+  }
 
+  const doDeleteVote = async (vote) => {
+    setConfirmDialog(null)
     setLoading(true)
     setError('')
     try {
@@ -645,10 +702,18 @@ export default function App() {
   }
 
   // Hapus SEMUA data voting sekaligus (dengan konfirmasi, karena permanen & tidak bisa dibatalkan)
-  const handleDeleteAllVotes = async () => {
+  const handleDeleteAllVotes = () => {
     if (allVotes.length === 0) return
-    if (!window.confirm(`Hapus SEMUA ${allVotes.length} data voting? Tindakan ini permanen dan tidak bisa dibatalkan.`)) return
+    setConfirmDialog({
+      title: 'Hapus Semua Data Voting?',
+      message: `Hapus SEMUA ${allVotes.length} data voting? Tindakan ini permanen dan tidak bisa dibatalkan.`,
+      confirmText: 'Ya, Hapus Semua',
+      onConfirm: doDeleteAllVotes,
+    })
+  }
 
+  const doDeleteAllVotes = async () => {
+    setConfirmDialog(null)
     setLoading(true)
     setError('')
     try {
@@ -1066,6 +1131,14 @@ export default function App() {
       {page === 'already' && renderAlreadyVoted()}
       {page === 'thankyou' && renderThankYou()}
       {page === 'admin' && renderAdmin()}
+      <ConfirmModal
+        open={!!confirmDialog}
+        title={confirmDialog?.title}
+        message={confirmDialog?.message}
+        confirmText={confirmDialog?.confirmText}
+        onConfirm={confirmDialog?.onConfirm}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </div>
   )
 }
