@@ -64,3 +64,72 @@ INSERT INTO voting_options (title, description, icon) VALUES
     ('Cara Bermain', 'Konten panduan & tutorial cara bermain.', '🎮'),
     ('Referensi TikTok', 'Konten referensi & inspirasi dari TikTok.', '📱'),
     ('Referensi Instagram', 'Konten referensi & inspirasi dari Instagram.', '📸');
+
+-- ============================================
+-- BAGIAN 3: BARU — Izin hapus data votes
+-- WAJIB dijalankan supaya tombol "Hapus" / "Hapus Semua" di admin panel berfungsi.
+-- Sebelumnya tabel votes cuma punya policy INSERT & SELECT, jadi DELETE selalu
+-- diblokir RLS meskipun tidak error (baris tidak akan terhapus).
+-- ============================================
+
+DROP POLICY IF EXISTS "Enable delete for all users" ON votes;
+CREATE POLICY "Enable delete for all users" ON votes
+    FOR DELETE USING (true);
+
+-- ============================================
+-- BAGIAN 4: BARU — Admin pakai Supabase Auth sungguhan + kunci RLS
+-- WAJIB urutan:
+-- 1) Supabase Dashboard → Authentication → Users → Add user.
+--    Email HARUS PERSIS: admin@votas-admin.local  (username "admin" + domain tetap
+--    di App.jsx / ADMIN_EMAIL_DOMAIN). Isi Password sesuka hati, centang "Auto Confirm User".
+--    Mau username lain selain "admin"? Ganti bagian depan email-nya juga, mis. "budi" -> budi@votas-admin.local.
+-- 2) Baru jalankan SQL BAGIAN 4 ini.
+-- Password admin lama yang di data.js sudah tidak dipakai sama sekali oleh kode.
+-- ============================================
+
+-- Fungsi khusus: cek status voting 1 nama, tanpa buka akses baca semua tabel votes.
+-- SECURITY DEFINER = jalan dengan hak akses pembuat function (bisa baca tabel),
+-- tapi cuma balikin baris yang nama-nya PERSIS cocok — vote siswa lain tetap rahasia.
+CREATE OR REPLACE FUNCTION check_vote_by_nama(p_nama TEXT)
+RETURNS TABLE (id BIGINT, nama VARCHAR, pilihan VARCHAR, timestamp TIMESTAMP)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT v.id, v.nama, v.pilihan, v.timestamp FROM votes v WHERE v.nama = p_nama LIMIT 1;
+$$;
+
+GRANT EXECUTE ON FUNCTION check_vote_by_nama(TEXT) TO anon, authenticated;
+
+-- votes: insert tetap terbuka (siswa vote tanpa akun Supabase Auth),
+-- select/update/delete cuma buat yang sudah login admin (auth.role() = 'authenticated').
+DROP POLICY IF EXISTS "Enable select for all users" ON votes;
+DROP POLICY IF EXISTS "Admin can select votes" ON votes;
+CREATE POLICY "Admin can select votes" ON votes
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Admin can update votes" ON votes;
+CREATE POLICY "Admin can update votes" ON votes
+    FOR UPDATE USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Enable delete for all users" ON votes;
+DROP POLICY IF EXISTS "Admin can delete votes" ON votes;
+CREATE POLICY "Admin can delete votes" ON votes
+    FOR DELETE USING (auth.role() = 'authenticated');
+
+-- voting_options: select tetap terbuka (siswa perlu lihat daftar pilihan),
+-- insert/update/delete cuma buat admin yang sudah login.
+DROP POLICY IF EXISTS "Enable insert for all users" ON voting_options;
+DROP POLICY IF EXISTS "Admin can insert options" ON voting_options;
+CREATE POLICY "Admin can insert options" ON voting_options
+    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Enable update for all users" ON voting_options;
+DROP POLICY IF EXISTS "Admin can update options" ON voting_options;
+CREATE POLICY "Admin can update options" ON voting_options
+    FOR UPDATE USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "Enable delete for all users" ON voting_options;
+DROP POLICY IF EXISTS "Admin can delete options" ON voting_options;
+CREATE POLICY "Admin can delete options" ON voting_options
+    FOR DELETE USING (auth.role() = 'authenticated');
