@@ -675,5 +675,5 @@ export const accounts = [
 
 export const adminAccount = {
   username: 'admin',
-  password: 'admin123', // ganti sesuai kebutuhan
+  password: 'mpkvotas2026', // ganti sesuai kebutuhan
 }
