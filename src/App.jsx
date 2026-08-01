@@ -1,10 +1,88 @@
 /**
  * App.jsx — Sistem Voting
  * Semua state, logic, dan render UI ada di satu file ini (sesuai struktur project).
+ * Styling pakai Tailwind CSS (lihat @theme di App.css untuk token warna/radius/shadow).
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Vote, Crown, CircleCheckBig, PartyPopper, Pencil, Trash2, Download } from 'lucide-react'
 import { supabase } from './supabase'
 import { accounts, adminAccount } from './data'
+import { OPTION_ICONS, getOptionIcon } from './icons'
+
+// ---------- Kelas tombol yang dipakai berkali-kali (biar JSX tidak penuh string panjang) ----------
+const BTN_PRIMARY =
+  'inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary-600 px-7 py-3.5 text-[14.4px] font-extrabold leading-[21px] text-white shadow-btn transition duration-200 hover:enabled:opacity-[0.92] hover:enabled:shadow-btn-hover active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
+const BTN_ACCENT =
+  'inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-neutral-lighter bg-surface-subtle px-7 py-3.5 text-[14.4px] font-extrabold leading-[21px] text-primary-600 transition duration-200 hover:enabled:border-primary-300 hover:enabled:bg-surface-gray active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
+const BTN_GRAY =
+  'inline-flex min-h-12 w-auto cursor-pointer items-center justify-center gap-2 rounded-full border border-neutral-lighter bg-white px-7 py-3.5 text-[14.4px] font-extrabold leading-[21px] text-text-tertiary transition duration-200 hover:enabled:border-neutral-light hover:enabled:bg-surface-gray active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
+const BTN_PRIMARY_SM =
+  'inline-flex min-h-10 w-auto cursor-pointer items-center justify-center gap-2 rounded-full bg-primary-600 px-5 py-2 text-[13px] font-extrabold leading-[21px] text-white shadow-btn transition duration-200 hover:enabled:opacity-[0.92] hover:enabled:shadow-btn-hover active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
+const BTN_GRAY_SM =
+  'inline-flex min-h-10 w-auto cursor-pointer items-center justify-center gap-2 rounded-full border border-neutral-lighter bg-white px-5 py-2 text-[13px] font-extrabold leading-[21px] text-text-tertiary transition duration-200 hover:enabled:bg-surface-gray active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
+const LINK_BUTTON =
+  'mt-4 block w-full cursor-pointer rounded-md bg-transparent py-2 text-center text-sm font-semibold text-primary-600 hover:underline'
+const INPUT_FIELD =
+  'min-h-11 w-full rounded-md border border-neutral-light px-4 py-3 text-base text-text-primary transition placeholder:text-text-disabled focus:border-primary-600 focus:shadow-focus-ring focus:outline-none'
+const ERROR_MESSAGE = 'mb-4 rounded-md bg-danger-bg px-3 py-2 text-sm text-danger'
+const ICON_BTN = 'flex items-center justify-center rounded-sm p-2 text-text-tertiary transition-colors hover:bg-surface-gray'
+const ICON_BTN_DANGER = 'flex items-center justify-center rounded-sm p-2 text-danger transition-colors hover:bg-danger-bg'
+const EMPTY_TEXT = 'py-8 text-center text-base text-text-disabled'
+
+// Komponen pemilih icon untuk pilihan voting: tombol trigger + grid icon lucide-react.
+function IconPicker({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const SelectedIcon = getOptionIcon(value)
+
+  return (
+    <div className="relative shrink-0" ref={wrapperRef}>
+      <button
+        type="button"
+        className={`flex h-11 w-[52px] items-center justify-center rounded-md border transition-colors hover:border-primary-300 ${
+          open ? 'border-primary-600 shadow-focus-ring' : 'border-neutral-light'
+        } ${value ? 'text-primary-600' : 'text-text-disabled'}`}
+        onClick={() => setOpen((prev) => !prev)}
+        title="Pilih icon"
+      >
+        <SelectedIcon size={20} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+8px)] z-20 grid max-h-[220px] w-[264px] grid-cols-6 gap-1 overflow-y-auto rounded-lg border border-neutral-lighter bg-white p-3 shadow-elevated">
+          {OPTION_ICONS.map(({ name, label, Icon }) => (
+            <button
+              key={name}
+              type="button"
+              className={`flex h-9 w-9 items-center justify-center rounded-sm border transition-colors ${
+                value === name
+                  ? 'border-primary-200 bg-primary-50 text-primary-600'
+                  : 'border-transparent text-text-tertiary hover:bg-surface-gray'
+              }`}
+              onClick={() => {
+                onChange(name)
+                setOpen(false)
+              }}
+              title={label}
+            >
+              <Icon size={18} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function App() {
   // ---------- STATE ----------
@@ -332,15 +410,19 @@ export default function App() {
 
   // ---------- RENDER: LOGIN ----------
   const renderLogin = () => (
-    <div className="page-center fade-in-up">
-      <div className="card login-card">
-        <h1 className="login-title">🗳️ SISTEM VOTING</h1>
-        <p className="login-subtitle">Masuk untuk memberikan suaramu</p>
+    <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
+      <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 shadow-card sm:px-6">
+        <h1 className="mb-2 flex items-center justify-center gap-2.5 text-center text-2xl leading-tight sm:text-[30px]">
+          <Vote size={28} strokeWidth={2.5} /> SISTEM VOTING
+        </h1>
+        <p className="mb-6 text-center text-base text-text-secondary">Masuk untuk memberikan suaramu</p>
 
         {!showAdminLogin ? (
-          <form onSubmit={handleLogin} className="form">
-            <div className="form-group">
-              <label htmlFor="nama">Nama</label>
+          <form onSubmit={handleLogin}>
+            <div className="mb-4">
+              <label htmlFor="nama" className="mb-2 block text-sm font-semibold leading-5 text-text-tertiary">
+                Nama
+              </label>
               <input
                 id="nama"
                 type="text"
@@ -348,10 +430,13 @@ export default function App() {
                 onChange={(e) => setLoginData({ ...loginData, nama: e.target.value })}
                 placeholder="Masukkan nama lengkap"
                 required
+                className={INPUT_FIELD}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
+            <div className="mb-4">
+              <label htmlFor="password" className="mb-2 block text-sm font-semibold leading-5 text-text-tertiary">
+                Password
+              </label>
               <input
                 id="password"
                 type="password"
@@ -359,20 +444,23 @@ export default function App() {
                 onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                 placeholder="Masukkan password"
                 required
+                className={INPUT_FIELD}
               />
             </div>
-            {error && <p className="error-message">{error}</p>}
-            <button type="submit" className="btn btn-primary" disabled={loading}>
+            {error && <p className={ERROR_MESSAGE}>{error}</p>}
+            <button type="submit" className={BTN_PRIMARY} disabled={loading}>
               {loading ? 'Memproses...' : 'Login'}
             </button>
-            <button type="button" className="link-button" onClick={toggleAdminLogin}>
+            <button type="button" className={LINK_BUTTON} onClick={toggleAdminLogin}>
               Login sebagai Admin
             </button>
           </form>
         ) : (
-          <form onSubmit={handleAdminLogin} className="form admin-form">
-            <div className="form-group">
-              <label htmlFor="username">Username</label>
+          <form onSubmit={handleAdminLogin} className="mt-6 border-t border-neutral-lighter pt-6">
+            <div className="mb-4">
+              <label htmlFor="username" className="mb-2 block text-sm font-semibold leading-5 text-text-tertiary">
+                Username
+              </label>
               <input
                 id="username"
                 type="text"
@@ -380,10 +468,13 @@ export default function App() {
                 onChange={(e) => setAdminData({ ...adminData, username: e.target.value })}
                 placeholder="Username admin"
                 required
+                className={INPUT_FIELD}
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="admin-password">Password</label>
+            <div className="mb-4">
+              <label htmlFor="admin-password" className="mb-2 block text-sm font-semibold leading-5 text-text-tertiary">
+                Password
+              </label>
               <input
                 id="admin-password"
                 type="password"
@@ -391,19 +482,20 @@ export default function App() {
                 onChange={(e) => setAdminData({ ...adminData, password: e.target.value })}
                 placeholder="Password admin"
                 required
+                className={INPUT_FIELD}
               />
             </div>
-            {error && <p className="error-message">{error}</p>}
-            <button type="submit" className="btn btn-accent" disabled={loading}>
+            {error && <p className={ERROR_MESSAGE}>{error}</p>}
+            <button type="submit" className={BTN_ACCENT} disabled={loading}>
               {loading ? 'Memproses...' : 'Login Admin'}
             </button>
-            <button type="button" className="link-button" onClick={toggleAdminLogin}>
+            <button type="button" className={LINK_BUTTON} onClick={toggleAdminLogin}>
               Kembali ke Login Siswa
             </button>
           </form>
         )}
 
-        <p className="login-footer">
+        <p className="mt-6 text-center text-sm text-text-disabled">
           Password: <strong>VOTING</strong> (huruf kapital)
         </p>
       </div>
@@ -412,51 +504,62 @@ export default function App() {
 
   // ---------- RENDER: VOTING ----------
   const renderVoting = () => (
-    <div className="page-container fade-in-up">
-      <div className="voting-header">
-        <h1>Halo, {currentUser?.nama}! 👋</h1>
-        <p>Silakan pilih salah satu opsi di bawah ini</p>
+    <div className="fade-in-up mx-auto w-full max-w-[1280px] px-8 py-12">
+      <div className="mb-12 text-center">
+        <h1 className="mb-2 text-2xl sm:text-[30px]">Halo, {currentUser?.nama}!</h1>
+        <p className="text-base text-text-secondary">Silakan pilih salah satu opsi di bawah ini</p>
       </div>
       {votingOptions.length === 0 ? (
-        <p className="empty-text">Pilihan voting belum tersedia. Coba refresh halaman.</p>
+        <p className={EMPTY_TEXT}>Pilihan voting belum tersedia. Coba refresh halaman.</p>
       ) : (
-        <div className="voting-grid">
-          {votingOptions.map((option) => (
-            <div key={option.id} className="vote-card" onClick={() => !loading && handleVote(option)}>
-              <div className="vote-icon">{option.icon}</div>
-              <h3>{option.title}</h3>
-              <p>{option.description}</p>
-              <button className="btn btn-vote" disabled={loading}>
-                {loading ? 'Memproses...' : 'Pilih'}
-              </button>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+          {votingOptions.map((option) => {
+            const OptionIcon = getOptionIcon(option.icon)
+            return (
+              <div
+                key={option.id}
+                className="cursor-pointer rounded-xl border border-neutral-lighter bg-white p-6 text-center shadow-card transition duration-200 hover:-translate-y-1 hover:border-primary-300 hover:shadow-elevated"
+                onClick={() => !loading && handleVote(option)}
+              >
+                <div className="mb-3 flex justify-center text-primary-600">
+                  <OptionIcon size={40} />
+                </div>
+                <h3 className="mb-2 text-lg">{option.title}</h3>
+                <p className="min-h-12 text-base leading-6 text-text-secondary">{option.description}</p>
+                <button className={BTN_PRIMARY} disabled={loading}>
+                  {loading ? 'Memproses...' : 'Pilih'}
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
-      {error && <p className="error-message center">{error}</p>}
+      {error && <p className={`${ERROR_MESSAGE} mt-4 text-center`}>{error}</p>}
     </div>
   )
 
   // ---------- RENDER: SUDAH VOTING ----------
   const renderAlreadyVoted = () => (
-    <div className="page-center fade-in-up">
-      <div className="card status-card">
-        <div className="status-icon">✅</div>
-        <h1>Anda Sudah Voting!</h1>
-        <div className="status-detail">
-          <p>
+    <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
+      <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
+        <div className="mb-4 flex justify-center text-primary-600">
+          <CircleCheckBig size={64} />
+        </div>
+        <h1 className="text-2xl sm:text-[30px]">Anda Sudah Voting!</h1>
+        <div className="my-6 rounded-lg bg-primary-50 p-4 text-left">
+          <p className="mb-2 text-sm text-text-tertiary">
             <strong>Nama:</strong> {votedData?.nama}
           </p>
-          <p>
+          <p className="mb-2 text-sm text-text-tertiary">
             <strong>Pilihan:</strong> {votedData?.pilihan}
           </p>
-          <p>
+          <p className="mb-0 text-sm text-text-tertiary">
             <strong>Waktu:</strong>{' '}
             {votedData?.timestamp ? new Date(votedData.timestamp).toLocaleString('id-ID') : '-'}
           </p>
         </div>
-        <p className="status-message">Terima kasih telah berpartisipasi! 🙏</p>
-        <button className="btn btn-gray" onClick={handleLogout}>
+        <p className="mb-6 text-base text-text-secondary">Terima kasih telah berpartisipasi!</p>
+        <button className={BTN_GRAY} onClick={handleLogout}>
           Logout
         </button>
       </div>
@@ -465,14 +568,18 @@ export default function App() {
 
   // ---------- RENDER: THANK YOU ----------
   const renderThankYou = () => (
-    <div className="page-center fade-in-up">
-      <div className="card status-card">
-        <div className="status-icon">🎉</div>
-        <h1>Suara Berhasil Tersimpan!</h1>
-        <p className="thankyou-name">Terima kasih, {votedData?.nama}!</p>
-        <div className="vote-highlight">{votedData?.pilihan}</div>
-        <p className="status-message">Suara Anda sangat berarti untuk kami! 🙌</p>
-        <button className="btn btn-gray" onClick={handleLogout}>
+    <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
+      <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
+        <div className="mb-4 flex justify-center text-primary-600">
+          <PartyPopper size={64} />
+        </div>
+        <h1 className="text-2xl sm:text-[30px]">Suara Berhasil Tersimpan!</h1>
+        <p className="my-4 text-lg text-text-tertiary">Terima kasih, {votedData?.nama}!</p>
+        <div className="mb-6 inline-block rounded-full border border-primary-200 bg-primary-50 px-5 py-2 font-semibold text-primary-700">
+          {votedData?.pilihan}
+        </div>
+        <p className="mb-6 text-base text-text-secondary">Suara Anda sangat berarti untuk kami!</p>
+        <button className={BTN_GRAY} onClick={handleLogout}>
           Logout
         </button>
       </div>
@@ -481,52 +588,60 @@ export default function App() {
 
   // ---------- RENDER: ADMIN DASHBOARD ----------
   const renderAdmin = () => (
-    <div className="page-container fade-in-up">
-      <div className="admin-header">
+    <div className="fade-in-up mx-auto w-full max-w-[1280px] px-8 py-12">
+      <div className="mb-12 flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
-          <h1>👑 Dashboard Admin</h1>
-          <p>
-            Total Voting: {totalVotes} <span className="badge">Live</span>
+          <h1 className="mb-1 flex items-center gap-2.5 text-2xl sm:text-[28px]">
+            <Crown size={26} /> Dashboard Admin
+          </h1>
+          <p className="text-base text-text-secondary">
+            Total Voting: {totalVotes}{' '}
+            <span className="ml-2 inline-block rounded-lg border border-primary-200 bg-primary-50 px-3 py-1 align-middle text-xs font-semibold text-primary-700">
+              Live
+            </span>
           </p>
         </div>
-        <button className="btn btn-gray" onClick={handleLogout}>
+        <button className={BTN_GRAY} onClick={handleLogout}>
           Logout
         </button>
       </div>
 
       {loading ? (
-        <p className="loading-text">Memuat data...</p>
+        <p className="py-8 text-center text-base text-text-disabled">Memuat data...</p>
       ) : (
         <>
-          <div className="stats-grid">
-            {votingResults.map((r) => (
-              <div key={r.id} className="stat-card">
-                <div className="stat-icon">{r.icon}</div>
-                <h3>{r.title}</h3>
-                <p className="stat-count">{r.count} suara</p>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${r.percentage}%` }} />
+          <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {votingResults.map((r) => {
+              const StatIcon = getOptionIcon(r.icon)
+              return (
+                <div key={r.id} className="rounded-xl border border-neutral-lighter bg-white p-6 text-center shadow-card">
+                  <div className="mb-2 flex justify-center text-primary-600">
+                    <StatIcon size={32} />
+                  </div>
+                  <h3 className="mb-3 text-lg">{r.title}</h3>
+                  <p className="mb-3 font-heading text-2xl font-extrabold text-primary-600">{r.count} suara</p>
+                  <div className="mb-2 h-2 overflow-hidden rounded-full bg-surface-gray">
+                    <div
+                      className="h-full bg-primary-600 transition-[width] duration-500"
+                      style={{ width: `${r.percentage}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-text-secondary">{r.percentage}%</p>
                 </div>
-                <p className="stat-percentage">{r.percentage}%</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          <div className="table-section options-section">
-            <div className="table-header">
-              <h2>Kelola Pilihan Voting</h2>
+          <div className="mb-8 rounded-xl border border-neutral-lighter bg-white p-6 shadow-card">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg">Kelola Pilihan Voting</h2>
             </div>
 
-            <form onSubmit={optionForm.id ? handleUpdateOption : handleAddOption} className="option-form">
-              <div className="option-form-row">
-                <input
-                  type="text"
+            <form onSubmit={optionForm.id ? handleUpdateOption : handleAddOption} className="mb-5 rounded-lg border border-neutral-lighter bg-surface-subtle p-4">
+              <div className="mb-3 flex items-center gap-3">
+                <IconPicker
                   value={optionForm.icon}
-                  onChange={(e) => setOptionForm({ ...optionForm, icon: e.target.value })}
-                  placeholder="🎮"
-                  className="option-icon-input"
-                  maxLength={4}
-                  required
+                  onChange={(name) => setOptionForm({ ...optionForm, icon: name })}
                 />
                 <input
                   type="text"
@@ -534,19 +649,21 @@ export default function App() {
                   onChange={(e) => setOptionForm({ ...optionForm, title: e.target.value })}
                   placeholder="Judul pilihan"
                   required
+                  className="min-w-0 flex-1 rounded-md border border-neutral-light px-3.5 py-2.5 text-sm text-text-primary focus:border-primary-600 focus:shadow-focus-ring focus:outline-none"
                 />
               </div>
               <textarea
                 value={optionForm.description}
                 onChange={(e) => setOptionForm({ ...optionForm, description: e.target.value })}
                 placeholder="Deskripsi singkat (opsional)"
+                className="mb-3 min-h-14 w-full resize-y rounded-md border border-neutral-light px-3.5 py-2.5 text-sm text-text-primary focus:border-primary-600 focus:shadow-focus-ring focus:outline-none"
               />
-              <div className="option-form-actions">
-                <button type="submit" className="btn btn-primary-sm" disabled={loading}>
+              <div className="flex gap-2">
+                <button type="submit" className={BTN_PRIMARY_SM} disabled={loading}>
                   {optionForm.id ? 'Simpan Perubahan' : '+ Tambah Pilihan'}
                 </button>
                 {optionForm.id && (
-                  <button type="button" className="btn btn-gray-sm" onClick={resetOptionForm}>
+                  <button type="button" className={BTN_GRAY_SM} onClick={resetOptionForm}>
                     Batal
                   </button>
                 )}
@@ -554,60 +671,67 @@ export default function App() {
             </form>
 
             {votingOptions.length === 0 ? (
-              <p className="empty-text">Belum ada pilihan voting</p>
+              <p className={EMPTY_TEXT}>Belum ada pilihan voting</p>
             ) : (
-              <div className="options-list">
-                {votingOptions.map((opt) => (
-                  <div key={opt.id} className="option-row">
-                    <span className="option-row-icon">{opt.icon}</span>
-                    <div className="option-row-text">
-                      <strong>{opt.title}</strong>
-                      {opt.description && <p>{opt.description}</p>}
+              <div className="flex flex-col gap-2">
+                {votingOptions.map((opt) => {
+                  const OptIcon = getOptionIcon(opt.icon)
+                  return (
+                    <div key={opt.id} className="flex items-center gap-3 rounded-md border border-neutral-lighter p-3">
+                      <span className="flex shrink-0 items-center text-primary-600">
+                        <OptIcon size={20} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <strong className="block text-sm text-text-primary">{opt.title}</strong>
+                        {opt.description && <p className="mt-0.5 text-[13px] text-text-secondary">{opt.description}</p>}
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <button className={ICON_BTN} onClick={() => handleEditOption(opt)} title="Edit">
+                          <Pencil size={16} />
+                        </button>
+                        <button className={ICON_BTN_DANGER} onClick={() => handleDeleteOption(opt)} title="Hapus">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="option-row-actions">
-                      <button className="icon-btn" onClick={() => handleEditOption(opt)} title="Edit">
-                        ✏️
-                      </button>
-                      <button className="icon-btn" onClick={() => handleDeleteOption(opt)} title="Hapus">
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
 
-          <div className="table-section">
-            <div className="table-header">
-              <h2>Daftar Voting</h2>
+          <div className="rounded-xl border border-neutral-lighter bg-white p-6 shadow-card">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg">Daftar Voting</h2>
               {allVotes.length > 0 && (
-                <button className="btn btn-primary-sm" onClick={exportCSV}>
-                  ⬇ Export CSV
+                <button className={BTN_PRIMARY_SM} onClick={exportCSV}>
+                  <Download size={16} /> Export CSV
                 </button>
               )}
             </div>
 
             {allVotes.length === 0 ? (
-              <p className="empty-text">Belum ada voting</p>
+              <p className={EMPTY_TEXT}>Belum ada voting</p>
             ) : (
-              <div className="table-wrapper">
-                <table>
+              <div className="max-h-[480px] overflow-x-auto overflow-y-auto rounded-md">
+                <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th>No</th>
-                      <th>Nama</th>
-                      <th>Pilihan</th>
-                      <th>Waktu</th>
+                      <th className="sticky top-0 bg-primary-50 px-4 py-3 text-left text-[13px] font-bold text-primary-700">No</th>
+                      <th className="sticky top-0 bg-primary-50 px-4 py-3 text-left text-[13px] font-bold text-primary-700">Nama</th>
+                      <th className="sticky top-0 bg-primary-50 px-4 py-3 text-left text-[13px] font-bold text-primary-700">Pilihan</th>
+                      <th className="sticky top-0 bg-primary-50 px-4 py-3 text-left text-[13px] font-bold text-primary-700">Waktu</th>
                     </tr>
                   </thead>
                   <tbody>
                     {allVotes.map((v, i) => (
-                      <tr key={v.id}>
-                        <td>{i + 1}</td>
-                        <td>{v.nama}</td>
-                        <td>{v.pilihan}</td>
-                        <td>{new Date(v.timestamp).toLocaleString('id-ID')}</td>
+                      <tr key={v.id} className="even:bg-surface-subtle">
+                        <td className="border-t border-surface-gray px-4 py-3 text-sm text-text-primary">{i + 1}</td>
+                        <td className="border-t border-surface-gray px-4 py-3 text-sm text-text-primary">{v.nama}</td>
+                        <td className="border-t border-surface-gray px-4 py-3 text-sm text-text-primary">{v.pilihan}</td>
+                        <td className="border-t border-surface-gray px-4 py-3 text-sm text-text-primary">
+                          {new Date(v.timestamp).toLocaleString('id-ID')}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -622,7 +746,7 @@ export default function App() {
 
   // ---------- MAIN RENDER ----------
   return (
-    <div className="app">
+    <div className="flex min-h-screen flex-col">
       {page === 'login' && renderLogin()}
       {page === 'voting' && renderVoting()}
       {page === 'already' && renderAlreadyVoted()}

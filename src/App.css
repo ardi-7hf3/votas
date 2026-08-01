@@ -1,689 +1,107 @@
-@import './design.css';
+@import "tailwindcss";
 
-/* ---------- Reset & Base ---------- */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Design tokens project ini (palet sky-blue + spacing 4px) dipetakan ke
+   namespace @theme Tailwind v4, supaya bisa dipakai sebagai utility biasa:
+   bg-primary-600, text-text-secondary, rounded-lg, shadow-card, dst. */
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-heading: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
-body {
-  font-family: var(--font-primary);
-  background: var(--bg-page);
-  min-height: 100vh;
-  color: var(--text-primary);
-  font-size: 16px;
-  line-height: 24px;
-  -webkit-font-smoothing: antialiased;
-}
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
 
-.app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-text-tertiary: #334155;
+  --color-text-disabled: #94a3b8;
 
-h1, h2, h3 {
-  font-family: var(--font-heading);
-  font-weight: 900;
-  color: var(--text-primary);
-}
+  --color-surface-subtle: #f8fafc;
+  --color-surface-gray: #f1f5f9;
+  --color-neutral-lighter: #e2e8f0;
+  --color-neutral-light: #cbd5e1;
 
-button:focus-visible,
-input:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
+  --color-danger: #991b1b;
+  --color-danger-bg: #fee2e2;
 
-/* ---------- Layout Helpers ---------- */
-.page-center {
-  min-height: 100vh;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-}
+  /* Override skala radius bawaan Tailwind supaya cocok dengan desain asli */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
 
-.page-container {
-  max-width: var(--container-xl);
-  margin: 0 auto;
-  padding: var(--space-12) var(--space-8);
-  width: 100%;
+  --shadow-card: rgba(15, 23, 42, 0.08) 0px 1px 3px 0px, rgba(15, 23, 42, 0.04) 0px 1px 2px 0px;
+  --shadow-btn: rgba(2, 132, 199, 0.2) 0px 8px 32px 0px, rgba(0, 0, 0, 0.08) 0px 2px 0px 0px;
+  --shadow-btn-hover: rgba(2, 132, 199, 0.4) 0px 8px 32px 0px;
+  --shadow-elevated: rgba(15, 23, 42, 0.12) 0px 20px 25px -5px, rgba(15, 23, 42, 0.12) 0px 8px 10px -6px;
+  --shadow-focus-ring: 0px 0px 0px 3px rgba(2, 132, 199, 0.1);
 }
 
-.card {
-  background: var(--white);
-  border: 1px solid var(--neutral-lighter);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
-  padding: var(--space-6);
-}
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 
-/* ---------- Buttons ---------- */
-.btn {
-  display: inline-block;
-  width: 100%;
-  min-height: 48px;
-  padding: 14px 28px;
-  border: none;
-  border-radius: var(--radius-full);
-  font-family: var(--font-primary);
-  font-weight: 800;
-  font-size: 14.4px;
-  line-height: 21px;
-  cursor: pointer;
-  transition: box-shadow var(--transition-base), background var(--transition-base),
-    opacity var(--transition-base), transform var(--transition-fast), border-color var(--transition-base);
-}
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-surface-subtle);
+    color: var(--color-text-primary);
+    font-size: 16px;
+    line-height: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
 
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
+  h1, h2, h3 {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    color: var(--color-text-primary);
+  }
 
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Primary / Block — CTA utama (biru, pill, shadow glow) */
-.btn-primary,
-.btn-vote {
-  background: var(--primary-600);
-  color: var(--white);
-  box-shadow: var(--shadow-btn);
-}
-.btn-primary:hover:not(:disabled),
-.btn-vote:hover:not(:disabled) {
-  opacity: 0.92;
-  box-shadow: var(--shadow-btn-hover);
-}
-
-/* Secondary — aksi kedua (Login Admin): bordered, teks biru */
-.btn-accent {
-  background: var(--surface-subtle);
-  color: var(--primary-600);
-  border: 1px solid var(--neutral-lighter);
-  box-shadow: none;
-}
-.btn-accent:hover:not(:disabled) {
-  background: var(--surface-gray);
-  border-color: var(--primary-300);
-}
-
-/* Neutral — aksi netral (Logout): bordered, teks gelap */
-.btn-gray {
-  background: var(--white);
-  color: var(--text-tertiary);
-  border: 1px solid var(--neutral-lighter);
-  box-shadow: none;
-  width: auto;
-}
-.btn-gray:hover:not(:disabled) {
-  background: var(--surface-gray);
-  border-color: var(--neutral-light);
-}
-
-/* Primary kecil — Export CSV */
-.btn-primary-sm {
-  background: var(--primary-600);
-  color: var(--white);
-  width: auto;
-  min-height: 40px;
-  padding: var(--space-2) var(--space-5);
-  font-size: 13px;
-  box-shadow: var(--shadow-btn);
-}
-.btn-primary-sm:hover:not(:disabled) {
-  box-shadow: var(--shadow-btn-hover);
-  opacity: 0.92;
-}
-
-.link-button {
-  display: block;
-  width: 100%;
-  text-align: center;
-  background: none;
-  border: none;
-  color: var(--primary-600);
-  font-size: 14px;
-  font-weight: 600;
-  margin-top: var(--space-4);
-  cursor: pointer;
-  padding: var(--space-2);
-}
-.link-button:hover {
-  text-decoration: underline;
-}
-
-/* ---------- Login Page ---------- */
-.login-card {
-  max-width: var(--container-sm);
-  width: 100%;
-}
-
-.login-title {
-  font-size: 30px;
-  line-height: 1.25;
-  text-align: center;
-  margin-bottom: var(--space-2);
-}
-
-.login-subtitle {
-  text-align: center;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-6);
-  font-size: 16px;
-}
-
-.form-group {
-  margin-bottom: var(--space-4);
-}
-
-.form-group label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  margin-bottom: var(--space-2);
-  line-height: 20px;
-}
-
-.form-group input {
-  width: 100%;
-  min-height: 44px;
-  padding: 12px 16px;
-  border: 1px solid var(--neutral-light);
-  border-radius: var(--radius-md);
-  font-size: 16px;
-  font-family: var(--font-primary);
-  color: var(--text-primary);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.form-group input::placeholder {
-  color: var(--text-disabled);
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: var(--primary-600);
-  box-shadow: var(--focus-ring);
-}
-
-.admin-form {
-  margin-top: var(--space-6);
-  border-top: 1px solid var(--neutral-lighter);
-  padding-top: var(--space-6);
-}
-
-.error-message {
-  color: var(--danger);
-  background: var(--danger-bg);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  margin-bottom: var(--space-4);
-}
-
-.error-message.center {
-  text-align: center;
-  margin-top: var(--space-4);
-}
-
-.login-footer {
-  text-align: center;
-  font-size: 14px;
-  color: var(--text-disabled);
-  margin-top: var(--space-6);
-}
-
-/* ---------- Voting Page ---------- */
-.voting-header {
-  text-align: center;
-  margin-bottom: var(--space-12);
-}
-
-.voting-header h1 {
-  font-size: 30px;
-  margin-bottom: var(--space-2);
-}
-
-.voting-header p {
-  color: var(--text-secondary);
-  font-size: 16px;
-}
-
-.voting-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-4);
-}
-
-@media (min-width: 640px) {
-  .voting-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-6);
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus-ring);
   }
 }
 
-@media (min-width: 1024px) {
-  .voting-grid {
-    grid-template-columns: repeat(3, 1fr);
+@layer utilities {
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-}
 
-.vote-card {
-  background: var(--white);
-  border: 1px solid var(--neutral-lighter);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
-  padding: var(--space-6);
-  text-align: center;
-  cursor: pointer;
-  transition: transform var(--transition-base), box-shadow var(--transition-base),
-    border-color var(--transition-base);
-}
-
-.vote-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-elevated);
-  border-color: var(--primary-300);
-}
-
-.vote-icon {
-  font-size: 40px;
-  margin-bottom: var(--space-3);
-}
-
-.vote-card h3 {
-  font-size: 18px;
-  margin-bottom: var(--space-2);
-}
-
-.vote-card p {
-  color: var(--text-secondary);
-  font-size: 16px;
-  line-height: 24px;
-  min-height: 48px;
-}
-
-/* ---------- Already Voted / Thank You ---------- */
-.status-card {
-  max-width: var(--container-sm);
-  width: 100%;
-  text-align: center;
-}
-
-.status-icon {
-  font-size: 64px;
-  margin-bottom: var(--space-4);
-}
-
-.status-detail {
-  background: var(--primary-50);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  margin: var(--space-6) 0;
-  text-align: left;
-}
-
-.status-detail p {
-  margin-bottom: var(--space-2);
-  font-size: 14px;
-  color: var(--text-tertiary);
-}
-
-.status-detail p:last-child {
-  margin-bottom: 0;
-}
-
-.status-message {
-  color: var(--text-secondary);
-  margin-bottom: var(--space-6);
-  font-size: 16px;
-}
-
-.thankyou-name {
-  font-size: 18px;
-  color: var(--text-tertiary);
-  margin: var(--space-4) 0;
-}
-
-.vote-highlight {
-  display: inline-block;
-  background: var(--primary-50);
-  color: var(--primary-700);
-  border: 1px solid var(--primary-200);
-  padding: var(--space-2) var(--space-5);
-  border-radius: var(--radius-full);
-  font-weight: 600;
-  margin-bottom: var(--space-6);
-}
-
-/* ---------- Admin Dashboard ---------- */
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  margin-bottom: var(--space-12);
-}
-
-.admin-header h1 {
-  font-size: 28px;
-  margin-bottom: var(--space-1);
-}
-
-.admin-header p {
-  color: var(--text-secondary);
-  font-size: 16px;
-}
-
-.badge {
-  display: inline-block;
-  background: var(--primary-50);
-  color: var(--primary-700);
-  border: 1px solid var(--primary-200);
-  font-size: 12px;
-  font-weight: 600;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-lg);
-  margin-left: var(--space-2);
-  vertical-align: middle;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-4);
-  margin-bottom: var(--space-12);
-}
-
-@media (min-width: 640px) {
-  .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
+  .fade-in-up {
+    animation: fadeInUp 0.5s ease both;
   }
-}
 
-.stat-card {
-  background: var(--white);
-  border: 1px solid var(--neutral-lighter);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
-  padding: var(--space-6);
-  text-align: center;
-}
-
-.stat-icon {
-  font-size: 32px;
-  margin-bottom: var(--space-2);
-}
-
-.stat-card h3 {
-  font-size: 18px;
-  margin-bottom: var(--space-3);
-}
-
-.stat-count {
-  font-size: 24px;
-  font-weight: 800;
-  font-family: var(--font-heading);
-  color: var(--primary-600);
-  margin-bottom: var(--space-3);
-}
-
-.progress-bar {
-  background: var(--surface-gray);
-  border-radius: var(--radius-full);
-  height: 8px;
-  overflow: hidden;
-  margin-bottom: var(--space-2);
-}
-
-.progress-fill {
-  background: var(--primary-600);
-  height: 100%;
-  transition: width var(--transition-slow);
-}
-
-.stat-percentage {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.table-section {
-  background: var(--white);
-  border: 1px solid var(--neutral-lighter);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
-  padding: var(--space-6);
-}
-
-.options-section {
-  margin-bottom: var(--space-8);
-}
-
-.btn-gray-sm {
-  background: var(--white);
-  color: var(--text-tertiary);
-  border: 1px solid var(--neutral-lighter);
-  width: auto;
-  min-height: 40px;
-  padding: var(--space-2) var(--space-5);
-  font-size: 13px;
-  box-shadow: none;
-}
-.btn-gray-sm:hover:not(:disabled) {
-  background: var(--surface-gray);
-}
-
-.option-form {
-  background: var(--surface-subtle);
-  border: 1px solid var(--neutral-lighter);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  margin-bottom: var(--space-5);
-}
-
-.option-form-row {
-  display: flex;
-  gap: var(--space-3);
-  margin-bottom: var(--space-3);
-}
-
-.option-form input,
-.option-form textarea {
-  padding: 10px 14px;
-  border: 1px solid var(--neutral-light);
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  font-family: var(--font-primary);
-  width: 100%;
-  color: var(--text-primary);
-}
-
-.option-icon-input {
-  width: 64px;
-  flex-shrink: 0;
-  text-align: center;
-  font-size: 18px;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.option-form textarea {
-  resize: vertical;
-  min-height: 56px;
-  margin-bottom: var(--space-3);
-}
-
-.option-form input:focus,
-.option-form textarea:focus {
-  outline: none;
-  border-color: var(--primary-600);
-  box-shadow: var(--focus-ring);
-}
-
-.option-form-actions {
-  display: flex;
-  gap: var(--space-2);
-}
-.option-form-actions .btn {
-  width: auto;
-}
-
-.options-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.option-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid var(--neutral-lighter);
-  border-radius: var(--radius-md);
-}
-
-.option-row-icon {
-  font-size: 22px;
-  flex-shrink: 0;
-}
-
-.option-row-text {
-  flex: 1;
-  min-width: 0;
-}
-.option-row-text strong {
-  display: block;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-.option-row-text p {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-.option-row-actions {
-  display: flex;
-  gap: var(--space-1);
-  flex-shrink: 0;
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 15px;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
-}
-.icon-btn:hover {
-  background: var(--surface-gray);
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-4);
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-.table-header h2 {
-  font-family: var(--font-heading);
-  font-weight: 900;
-  font-size: 18px;
-  color: var(--text-primary);
-}
-
-.table-wrapper {
-  overflow-x: auto;
-  max-height: 480px;
-  overflow-y: auto;
-  border-radius: var(--radius-md);
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead th {
-  background: var(--primary-50);
-  color: var(--primary-700);
-  text-align: left;
-  padding: var(--space-3) var(--space-4);
-  font-size: 13px;
-  font-weight: 700;
-  position: sticky;
-  top: 0;
-}
-
-tbody td {
-  padding: var(--space-3) var(--space-4);
-  font-size: 14px;
-  color: var(--text-primary);
-  border-top: 1px solid var(--surface-gray);
-}
-
-tbody tr:nth-child(even) {
-  background: var(--surface-subtle);
-}
-
-.empty-text,
-.loading-text {
-  text-align: center;
-  color: var(--text-disabled);
-  padding: var(--space-8) 0;
-  font-size: 16px;
-}
-
-/* ---------- Animations ---------- */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
+  @media (prefers-reduced-motion: reduce) {
+    .fade-in-up {
+      animation: none;
+    }
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.fade-in-up {
-  animation: fadeInUp 0.5s ease both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fade-in-up {
-    animation: none;
-  }
-  .vote-card,
-  .btn {
-    transition: none;
-  }
-}
-
-/* ---------- Responsive ---------- */
-@media (max-width: 480px) {
-  .card {
-    padding: var(--space-6) var(--space-4);
-  }
-  .admin-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .login-title,
-  .voting-header h1,
-  .admin-header h1 {
-    font-size: 24px;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
