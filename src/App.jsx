@@ -260,6 +260,15 @@ function VoteCard({ option, loading, onVote }) {
   )
 }
 
+// Topbar biru — tampil di semua halaman setelah login (voting siswa & admin). Cuma nama, tanpa logo.
+function TopBar() {
+  return (
+    <header className="sticky top-0 z-30 flex h-14 w-full shrink-0 items-center justify-center bg-primary-600">
+      <span className="font-heading text-lg font-extrabold tracking-widest text-white">VOTAS</span>
+    </header>
+  )
+}
+
 export default function App() {
   // ---------- STATE ----------
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -735,55 +744,61 @@ export default function App() {
 
   // ---------- RENDER: VOTING ----------
   const renderVoting = () => (
-    <div className="fade-in-up mx-auto w-full max-w-[1280px] px-8 py-12">
-      <div className="mb-12 text-center">
-        <h1 className="mb-2 text-2xl sm:text-[30px]">Halo, {currentUser?.nama}!</h1>
-        <p className="text-base text-text-secondary">Silakan pilih salah satu opsi di bawah ini</p>
-      </div>
-      {votingOptions.length === 0 ? (
-        <p className={EMPTY_TEXT}>Pilihan voting belum tersedia. Coba refresh halaman.</p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-          {votingOptions.map((option) => (
-            <VoteCard key={option.id} option={option} loading={loading} onVote={handleVote} />
-          ))}
+    <>
+      <TopBar />
+      <div className="fade-in-up mx-auto w-full max-w-[1280px] px-8 py-12">
+        <div className="mb-12 text-center">
+          <h1 className="mb-2 text-2xl sm:text-[30px]">Halo, {currentUser?.nama}!</h1>
+          <p className="text-base text-text-secondary">Silakan pilih salah satu opsi di bawah ini</p>
         </div>
-      )}
-      {error && <p className={`${ERROR_MESSAGE} mt-4 text-center`}>{error}</p>}
-    </div>
+        {votingOptions.length === 0 ? (
+          <p className={EMPTY_TEXT}>Pilihan voting belum tersedia. Coba refresh halaman.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+            {votingOptions.map((option) => (
+              <VoteCard key={option.id} option={option} loading={loading} onVote={handleVote} />
+            ))}
+          </div>
+        )}
+        {error && <p className={`${ERROR_MESSAGE} mt-4 text-center`}>{error}</p>}
+      </div>
+    </>
   )
 
   // ---------- RENDER: SUDAH VOTING ----------
   const renderAlreadyVoted = () => {
     const votedOption = votingOptions.find((o) => o.title === votedData?.pilihan)
     return (
-      <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
-        <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
-          <div className="mb-4 flex justify-center text-primary-600">
-            <CircleCheckBig size={64} />
+      <>
+        <TopBar />
+        <div className="fade-in-up flex w-full flex-1 items-center justify-center p-4">
+          <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
+            <div className="mb-4 flex justify-center text-primary-600">
+              <CircleCheckBig size={64} />
+            </div>
+            <h1 className="text-2xl sm:text-[30px]">Anda Sudah Voting!</h1>
+            <div className="my-6 rounded-lg bg-primary-50 p-4 text-left">
+              <p className="mb-2 text-sm text-text-tertiary">
+                <strong>Nama:</strong> {votedData?.nama}
+              </p>
+              <p className="mb-2 text-sm text-text-tertiary">
+                <strong>Pilihan:</strong> {votedData?.pilihan}
+              </p>
+              <p className="mb-0 text-sm text-text-tertiary">
+                <strong>Waktu:</strong>{' '}
+                {votedData?.timestamp ? new Date(votedData.timestamp).toLocaleString('id-ID') : '-'}
+              </p>
+            </div>
+            <div className="mb-6">
+              <LombaInfo option={votedOption} />
+            </div>
+            <p className="mb-6 text-base text-text-secondary">Terima kasih telah berpartisipasi!</p>
+            <button className={BTN_GRAY} onClick={handleLogout}>
+              Logout
+            </button>
           </div>
-          <h1 className="text-2xl sm:text-[30px]">Anda Sudah Voting!</h1>
-          <div className="my-6 rounded-lg bg-primary-50 p-4 text-left">
-            <p className="mb-2 text-sm text-text-tertiary">
-              <strong>Nama:</strong> {votedData?.nama}
-            </p>
-            <p className="mb-2 text-sm text-text-tertiary">
-              <strong>Pilihan:</strong> {votedData?.pilihan}
-            </p>
-            <p className="mb-0 text-sm text-text-tertiary">
-              <strong>Waktu:</strong>{' '}
-              {votedData?.timestamp ? new Date(votedData.timestamp).toLocaleString('id-ID') : '-'}
-            </p>
-          </div>
-          <div className="mb-6">
-            <LombaInfo option={votedOption} />
-          </div>
-          <p className="mb-6 text-base text-text-secondary">Terima kasih telah berpartisipasi!</p>
-          <button className={BTN_GRAY} onClick={handleLogout}>
-            Logout
-          </button>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -791,31 +806,36 @@ export default function App() {
   const renderThankYou = () => {
     const votedOption = votingOptions.find((o) => o.title === votedData?.pilihan)
     return (
-      <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
-        <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
-          <div className="mb-4 flex justify-center text-primary-600">
-            <PartyPopper size={64} />
+      <>
+        <TopBar />
+        <div className="fade-in-up flex w-full flex-1 items-center justify-center p-4">
+          <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
+            <div className="mb-4 flex justify-center text-primary-600">
+              <PartyPopper size={64} />
+            </div>
+            <h1 className="text-2xl sm:text-[30px]">Suara Berhasil Tersimpan!</h1>
+            <p className="my-4 text-lg text-text-tertiary">Terima kasih, {votedData?.nama}!</p>
+            <div className="mb-3 inline-block rounded-full border border-primary-200 bg-primary-50 px-5 py-2 font-semibold text-primary-700">
+              {votedData?.pilihan}
+            </div>
+            <div className="mb-6">
+              <LombaInfo option={votedOption} />
+            </div>
+            <p className="mb-6 text-base text-text-secondary">Suara Anda sangat berarti untuk kami!</p>
+            <button className={BTN_GRAY} onClick={handleLogout}>
+              Logout
+            </button>
           </div>
-          <h1 className="text-2xl sm:text-[30px]">Suara Berhasil Tersimpan!</h1>
-          <p className="my-4 text-lg text-text-tertiary">Terima kasih, {votedData?.nama}!</p>
-          <div className="mb-3 inline-block rounded-full border border-primary-200 bg-primary-50 px-5 py-2 font-semibold text-primary-700">
-            {votedData?.pilihan}
-          </div>
-          <div className="mb-6">
-            <LombaInfo option={votedOption} />
-          </div>
-          <p className="mb-6 text-base text-text-secondary">Suara Anda sangat berarti untuk kami!</p>
-          <button className={BTN_GRAY} onClick={handleLogout}>
-            Logout
-          </button>
         </div>
-      </div>
+      </>
     )
   }
 
   // ---------- RENDER: ADMIN DASHBOARD ----------
   const renderAdmin = () => (
-    <div className="fade-in-up mx-auto w-full max-w-[1280px] px-8 py-12">
+    <>
+      <TopBar />
+      <div className="fade-in-up mx-auto w-full max-w-[1280px] px-8 py-12">
       <div className="mb-12 flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <h1 className="mb-1 flex items-center gap-2.5 text-2xl sm:text-[28px]">
@@ -992,7 +1012,8 @@ export default function App() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   )
 
   // ---------- MAIN RENDER ----------
