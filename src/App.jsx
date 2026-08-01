@@ -4,7 +4,7 @@
  * Styling pakai Tailwind CSS (lihat @theme di App.css untuk token warna/radius/shadow).
  */
 import { useState, useEffect, useRef } from 'react'
-import { Vote, Crown, CircleCheckBig, PartyPopper, Pencil, Trash2, Download } from 'lucide-react'
+import { Vote, Crown, CircleCheckBig, PartyPopper, Pencil, Trash2, Download, ChevronDown } from 'lucide-react'
 import { supabase } from './supabase'
 import { accounts, adminAccount } from './data'
 import { OPTION_ICONS, getOptionIcon } from './icons'
@@ -28,6 +28,107 @@ const ERROR_MESSAGE = 'mb-4 rounded-md bg-danger-bg px-3 py-2 text-sm text-dange
 const ICON_BTN = 'flex items-center justify-center rounded-sm p-2 text-text-tertiary transition-colors hover:bg-surface-gray'
 const ICON_BTN_DANGER = 'flex items-center justify-center rounded-sm p-2 text-danger transition-colors hover:bg-danger-bg'
 const EMPTY_TEXT = 'py-8 text-center text-base text-text-disabled'
+
+// Ubah URL polos di dalam teks (field Cara Bermain / Aturan & Referensi Video) jadi link yang bisa diklik.
+function linkify(text) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  return text.split(urlRegex).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="break-all text-primary-600 underline">
+        {part}
+      </a>
+    ) : (
+      part
+    )
+  )
+}
+
+// Cari semua URL di dalam sebuah teks (dipakai buat render preview video di bawahnya).
+function extractUrls(text) {
+  return text.match(/https?:\/\/[^\s]+/g) || []
+}
+
+function getYouTubeId(url) {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return m ? m[1] : null
+}
+
+function isTikTokUrl(url) {
+  return /tiktok\.com/.test(url)
+}
+
+// Kartu preview thumbnail buat link YouTube/TikTok. YouTube langsung dari URL thumbnail
+// bawaannya (nggak perlu fetch). TikTok perlu fetch oEmbed API mereka — kalau gagal/CORS
+// diblokir, otomatis fallback jadi link teks biasa (nggak bikin UI rusak).
+function VideoPreview({ url }) {
+  const youtubeId = getYouTubeId(url)
+  const isTikTok = !youtubeId && isTikTokUrl(url)
+  const [tiktokData, setTiktokData] = useState(null)
+  const [tiktokError, setTiktokError] = useState(false)
+
+  useEffect(() => {
+    if (!isTikTok) return
+    let cancelled = false
+    fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('oEmbed gagal')
+        return res.json()
+      })
+      .then((data) => {
+        if (!cancelled) setTiktokData(data)
+      })
+      .catch(() => {
+        if (!cancelled) setTiktokError(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [url, isTikTok])
+
+  if (!youtubeId && !isTikTok) return null
+
+  if (youtubeId) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 flex items-center gap-3 overflow-hidden rounded-lg border border-neutral-lighter bg-white transition hover:border-primary-300"
+      >
+        <img
+          src={`https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`}
+          alt="Thumbnail video YouTube"
+          className="h-16 w-28 shrink-0 object-cover"
+        />
+        <span className="truncate pr-3 text-sm font-medium text-primary-600">Buka video YouTube</span>
+      </a>
+    )
+  }
+
+  if (tiktokError) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="mt-2 block break-all text-sm text-primary-600 underline">
+        {url}
+      </a>
+    )
+  }
+
+  if (!tiktokData) {
+    return <div className="mt-2 h-16 w-full animate-pulse rounded-lg bg-surface-gray" />
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-2 flex items-center gap-3 overflow-hidden rounded-lg border border-neutral-lighter bg-white transition hover:border-primary-300"
+    >
+      <img src={tiktokData.thumbnail_url} alt="Thumbnail video TikTok" className="h-16 w-16 shrink-0 object-cover" />
+      <span className="truncate pr-3 text-sm font-medium text-primary-600">{tiktokData.title || 'Buka video TikTok'}</span>
+    </a>
+  )
+}
 
 // Komponen pemilih icon untuk pilihan voting: tombol trigger + grid icon lucide-react.
 function IconPicker({ value, onChange }) {
@@ -84,6 +185,79 @@ function IconPicker({ value, onChange }) {
   )
 }
 
+// Info tambahan per pilihan voting (cara bermain + aturan/referensi video), bisa dibuka/tutup.
+// Dipakai di kartu voting DAN di halaman status (sudah voting / terima kasih) — makanya
+// selalu stopPropagation, biar aman dipasang di dalam elemen yang bisa diklik (vote-card).
+function LombaInfo({ option }) {
+  const [expanded, setExpanded] = useState(false)
+  const caraBermain = option?.cara_bermain?.trim()
+  const aturan = option?.aturan_referensi?.trim()
+
+  if (!caraBermain && !aturan) return null
+
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          setExpanded((prev) => !prev)
+        }}
+        className="mx-auto flex items-center gap-1.5 text-sm font-semibold text-primary-600 hover:underline"
+      >
+        Cara Bermain & Aturan
+        <ChevronDown size={16} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+      {expanded && (
+        <div className="mt-3 space-y-3 rounded-lg bg-primary-50 p-4 text-left">
+          {caraBermain && (
+            <div>
+              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-primary-700">Cara Bermain</p>
+              <p className="whitespace-pre-line text-sm text-text-tertiary">{linkify(caraBermain)}</p>
+              {extractUrls(caraBermain).map((url, i) => (
+                <VideoPreview key={`${url}-${i}`} url={url} />
+              ))}
+            </div>
+          )}
+          {aturan && (
+            <div>
+              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-primary-700">Aturan & Referensi Video</p>
+              <p className="whitespace-pre-line text-sm text-text-tertiary">{linkify(aturan)}</p>
+              {extractUrls(aturan).map((url, i) => (
+                <VideoPreview key={`${url}-${i}`} url={url} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Satu kartu pilihan voting (dipisah jadi komponen sendiri supaya dropdown info-nya
+// punya state buka/tutup masing-masing, independen antar kartu).
+function VoteCard({ option, loading, onVote }) {
+  const OptionIcon = getOptionIcon(option.icon)
+  return (
+    <div
+      className="cursor-pointer rounded-xl border border-neutral-lighter bg-white p-6 text-center shadow-card transition duration-200 hover:-translate-y-1 hover:border-primary-300 hover:shadow-elevated"
+      onClick={() => !loading && onVote(option)}
+    >
+      <div className="mb-3 flex justify-center text-primary-600">
+        <OptionIcon size={40} />
+      </div>
+      <h3 className="mb-2 text-lg">{option.title}</h3>
+      <p className="min-h-12 text-base leading-6 text-text-secondary">{option.description}</p>
+      <div className="my-3">
+        <LombaInfo option={option} />
+      </div>
+      <button className={BTN_PRIMARY} disabled={loading}>
+        {loading ? 'Memproses...' : 'Pilih'}
+      </button>
+    </div>
+  )
+}
+
 export default function App() {
   // ---------- STATE ----------
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -101,7 +275,14 @@ export default function App() {
   const [totalVotes, setTotalVotes] = useState(0)
   const [allVotes, setAllVotes] = useState([]) // data mentah semua vote, untuk tabel & export CSV
   const [votingOptions, setVotingOptions] = useState([]) // sekarang dari Supabase, bukan hardcoded
-  const [optionForm, setOptionForm] = useState({ id: null, title: '', description: '', icon: '' }) // form tambah/edit pilihan (admin)
+  const [optionForm, setOptionForm] = useState({
+    id: null,
+    title: '',
+    description: '',
+    icon: '',
+    cara_bermain: '',
+    aturan_referensi: '',
+  }) // form tambah/edit pilihan (admin)
 
   // Muat pilihan voting sekali saat app dibuka
   useEffect(() => {
@@ -261,7 +442,7 @@ export default function App() {
     setVotingResults([])
     setTotalVotes(0)
     setAllVotes([])
-    setOptionForm({ id: null, title: '', description: '', icon: '' })
+    setOptionForm({ id: null, title: '', description: '', icon: '', cara_bermain: '', aturan_referensi: '' })
   }
 
   const toggleAdminLogin = () => {
@@ -292,7 +473,7 @@ export default function App() {
 
   // Reset form tambah/edit pilihan voting
   const resetOptionForm = () => {
-    setOptionForm({ id: null, title: '', description: '', icon: '' })
+    setOptionForm({ id: null, title: '', description: '', icon: '', cara_bermain: '', aturan_referensi: '' })
   }
 
   // Mulai mode edit: isi form dengan data pilihan yang dipilih
@@ -302,6 +483,8 @@ export default function App() {
       title: option.title,
       description: option.description || '',
       icon: option.icon,
+      cara_bermain: option.cara_bermain || '',
+      aturan_referensi: option.aturan_referensi || '',
     })
     setError('')
   }
@@ -321,6 +504,8 @@ export default function App() {
           title: optionForm.title.trim(),
           description: optionForm.description.trim(),
           icon: optionForm.icon.trim(),
+          cara_bermain: optionForm.cara_bermain.trim(),
+          aturan_referensi: optionForm.aturan_referensi.trim(),
         },
       ])
 
@@ -354,6 +539,8 @@ export default function App() {
           title: newTitle,
           description: optionForm.description.trim(),
           icon: optionForm.icon.trim(),
+          cara_bermain: optionForm.cara_bermain.trim(),
+          aturan_referensi: optionForm.aturan_referensi.trim(),
         })
         .eq('id', optionForm.id)
 
@@ -410,7 +597,12 @@ export default function App() {
 
   // ---------- RENDER: LOGIN ----------
   const renderLogin = () => (
-    <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
+    <div className="fade-in-up flex min-h-screen w-full flex-col items-center justify-center gap-6 p-4">
+      <div className="flex items-center justify-center gap-5">
+        <img src="/logos/mpk.png" alt="Logo MPK SMA Negeri 13 Pontianak" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
+        <img src="/logos/smantas.png" alt="Logo SMA Negeri 13 Pontianak" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
+        <img src="/logos/osis.png" alt="Logo OSIS SMANTAS" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
+      </div>
       <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 shadow-card sm:px-6">
         <h1 className="mb-2 flex items-center justify-center gap-2.5 text-center text-2xl leading-tight sm:text-[30px]">
           <Vote size={28} strokeWidth={2.5} /> SISTEM VOTING
@@ -513,25 +705,9 @@ export default function App() {
         <p className={EMPTY_TEXT}>Pilihan voting belum tersedia. Coba refresh halaman.</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-          {votingOptions.map((option) => {
-            const OptionIcon = getOptionIcon(option.icon)
-            return (
-              <div
-                key={option.id}
-                className="cursor-pointer rounded-xl border border-neutral-lighter bg-white p-6 text-center shadow-card transition duration-200 hover:-translate-y-1 hover:border-primary-300 hover:shadow-elevated"
-                onClick={() => !loading && handleVote(option)}
-              >
-                <div className="mb-3 flex justify-center text-primary-600">
-                  <OptionIcon size={40} />
-                </div>
-                <h3 className="mb-2 text-lg">{option.title}</h3>
-                <p className="min-h-12 text-base leading-6 text-text-secondary">{option.description}</p>
-                <button className={BTN_PRIMARY} disabled={loading}>
-                  {loading ? 'Memproses...' : 'Pilih'}
-                </button>
-              </div>
-            )
-          })}
+          {votingOptions.map((option) => (
+            <VoteCard key={option.id} option={option} loading={loading} onVote={handleVote} />
+          ))}
         </div>
       )}
       {error && <p className={`${ERROR_MESSAGE} mt-4 text-center`}>{error}</p>}
@@ -539,52 +715,64 @@ export default function App() {
   )
 
   // ---------- RENDER: SUDAH VOTING ----------
-  const renderAlreadyVoted = () => (
-    <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
-      <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
-        <div className="mb-4 flex justify-center text-primary-600">
-          <CircleCheckBig size={64} />
+  const renderAlreadyVoted = () => {
+    const votedOption = votingOptions.find((o) => o.title === votedData?.pilihan)
+    return (
+      <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
+        <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
+          <div className="mb-4 flex justify-center text-primary-600">
+            <CircleCheckBig size={64} />
+          </div>
+          <h1 className="text-2xl sm:text-[30px]">Anda Sudah Voting!</h1>
+          <div className="my-6 rounded-lg bg-primary-50 p-4 text-left">
+            <p className="mb-2 text-sm text-text-tertiary">
+              <strong>Nama:</strong> {votedData?.nama}
+            </p>
+            <p className="mb-2 text-sm text-text-tertiary">
+              <strong>Pilihan:</strong> {votedData?.pilihan}
+            </p>
+            <p className="mb-0 text-sm text-text-tertiary">
+              <strong>Waktu:</strong>{' '}
+              {votedData?.timestamp ? new Date(votedData.timestamp).toLocaleString('id-ID') : '-'}
+            </p>
+          </div>
+          <div className="mb-6">
+            <LombaInfo option={votedOption} />
+          </div>
+          <p className="mb-6 text-base text-text-secondary">Terima kasih telah berpartisipasi!</p>
+          <button className={BTN_GRAY} onClick={handleLogout}>
+            Logout
+          </button>
         </div>
-        <h1 className="text-2xl sm:text-[30px]">Anda Sudah Voting!</h1>
-        <div className="my-6 rounded-lg bg-primary-50 p-4 text-left">
-          <p className="mb-2 text-sm text-text-tertiary">
-            <strong>Nama:</strong> {votedData?.nama}
-          </p>
-          <p className="mb-2 text-sm text-text-tertiary">
-            <strong>Pilihan:</strong> {votedData?.pilihan}
-          </p>
-          <p className="mb-0 text-sm text-text-tertiary">
-            <strong>Waktu:</strong>{' '}
-            {votedData?.timestamp ? new Date(votedData.timestamp).toLocaleString('id-ID') : '-'}
-          </p>
-        </div>
-        <p className="mb-6 text-base text-text-secondary">Terima kasih telah berpartisipasi!</p>
-        <button className={BTN_GRAY} onClick={handleLogout}>
-          Logout
-        </button>
       </div>
-    </div>
-  )
+    )
+  }
 
   // ---------- RENDER: THANK YOU ----------
-  const renderThankYou = () => (
-    <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
-      <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
-        <div className="mb-4 flex justify-center text-primary-600">
-          <PartyPopper size={64} />
+  const renderThankYou = () => {
+    const votedOption = votingOptions.find((o) => o.title === votedData?.pilihan)
+    return (
+      <div className="fade-in-up flex min-h-screen w-full items-center justify-center p-4">
+        <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 text-center shadow-card sm:px-6">
+          <div className="mb-4 flex justify-center text-primary-600">
+            <PartyPopper size={64} />
+          </div>
+          <h1 className="text-2xl sm:text-[30px]">Suara Berhasil Tersimpan!</h1>
+          <p className="my-4 text-lg text-text-tertiary">Terima kasih, {votedData?.nama}!</p>
+          <div className="mb-3 inline-block rounded-full border border-primary-200 bg-primary-50 px-5 py-2 font-semibold text-primary-700">
+            {votedData?.pilihan}
+          </div>
+          <div className="mb-6">
+            <LombaInfo option={votedOption} />
+          </div>
+          <p className="mb-6 text-base text-text-secondary">Suara Anda sangat berarti untuk kami!</p>
+          <button className={BTN_GRAY} onClick={handleLogout}>
+            Logout
+          </button>
         </div>
-        <h1 className="text-2xl sm:text-[30px]">Suara Berhasil Tersimpan!</h1>
-        <p className="my-4 text-lg text-text-tertiary">Terima kasih, {votedData?.nama}!</p>
-        <div className="mb-6 inline-block rounded-full border border-primary-200 bg-primary-50 px-5 py-2 font-semibold text-primary-700">
-          {votedData?.pilihan}
-        </div>
-        <p className="mb-6 text-base text-text-secondary">Suara Anda sangat berarti untuk kami!</p>
-        <button className={BTN_GRAY} onClick={handleLogout}>
-          Logout
-        </button>
       </div>
-    </div>
-  )
+    )
+  }
 
   // ---------- RENDER: ADMIN DASHBOARD ----------
   const renderAdmin = () => (
@@ -658,6 +846,19 @@ export default function App() {
                 placeholder="Deskripsi singkat (opsional)"
                 className="mb-3 min-h-14 w-full resize-y rounded-md border border-neutral-light px-3.5 py-2.5 text-sm text-text-primary focus:border-primary-600 focus:shadow-focus-ring focus:outline-none"
               />
+              <textarea
+                value={optionForm.cara_bermain}
+                onChange={(e) => setOptionForm({ ...optionForm, cara_bermain: e.target.value })}
+                placeholder="Cara bermain (opsional)"
+                className="mb-3 min-h-14 w-full resize-y rounded-md border border-neutral-light px-3.5 py-2.5 text-sm text-text-primary focus:border-primary-600 focus:shadow-focus-ring focus:outline-none"
+              />
+              <textarea
+                value={optionForm.aturan_referensi}
+                onChange={(e) => setOptionForm({ ...optionForm, aturan_referensi: e.target.value })}
+                placeholder="Aturan & referensi video, misal link TikTok (opsional)"
+                className="mb-1 min-h-14 w-full resize-y rounded-md border border-neutral-light px-3.5 py-2.5 text-sm text-text-primary focus:border-primary-600 focus:shadow-focus-ring focus:outline-none"
+              />
+              <p className="mb-3 text-xs text-text-disabled">Link (TikTok, dll) yang ditempel di sini otomatis jadi bisa diklik.</p>
               <div className="flex gap-2">
                 <button type="submit" className={BTN_PRIMARY_SM} disabled={loading}>
                   {optionForm.id ? 'Simpan Perubahan' : '+ Tambah Pilihan'}
