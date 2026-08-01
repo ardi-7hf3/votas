@@ -599,9 +599,9 @@ export default function App() {
   const renderLogin = () => (
     <div className="fade-in-up flex min-h-screen w-full flex-col items-center justify-center gap-6 p-4">
       <div className="flex items-center justify-center gap-5">
-        <img src="/mpk.png" alt="Logo MPK SMA Negeri 13 Pontianak" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
-        <img src="/smantas.png" alt="Logo SMA Negeri 13 Pontianak" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
-        <img src="/osis.png" alt="Logo OSIS SMANTAS" className="h-14 w-14 object-contain sm:h-16 sm:w-16" />
+        <img src="/logos/mpk.png" alt="Logo MPK SMA Negeri 13 Pontianak" className="h-14 w-auto sm:h-16" />
+        <img src="/logos/smantas.png" alt="Logo SMA Negeri 13 Pontianak" className="h-14 w-auto sm:h-16" />
+        <img src="/logos/osis.png" alt="Logo OSIS SMANTAS" className="h-14 w-auto sm:h-16" />
       </div>
       <div className="w-full max-w-[640px] rounded-xl border border-neutral-lighter bg-white p-6 px-4 shadow-card sm:px-6">
         <h1 className="mb-2 flex items-center justify-center gap-2.5 text-center text-2xl leading-tight sm:text-[30px]">
