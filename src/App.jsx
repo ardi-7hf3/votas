@@ -20,6 +20,8 @@ const BTN_PRIMARY_SM =
   'inline-flex min-h-10 w-auto cursor-pointer items-center justify-center gap-2 rounded-full bg-primary-600 px-5 py-2 text-[13px] font-extrabold leading-[21px] text-white shadow-btn transition duration-200 hover:enabled:opacity-[0.92] hover:enabled:shadow-btn-hover active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
 const BTN_GRAY_SM =
   'inline-flex min-h-10 w-auto cursor-pointer items-center justify-center gap-2 rounded-full border border-neutral-lighter bg-white px-5 py-2 text-[13px] font-extrabold leading-[21px] text-text-tertiary transition duration-200 hover:enabled:bg-surface-gray active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
+const BTN_DANGER_SM =
+  'inline-flex min-h-10 w-auto cursor-pointer items-center justify-center gap-2 rounded-full border border-danger-bg bg-danger-bg px-5 py-2 text-[13px] font-extrabold leading-[21px] text-danger transition duration-200 hover:enabled:border-danger hover:enabled:bg-danger hover:enabled:text-white active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60'
 const LINK_BUTTON =
   'mt-4 block w-full cursor-pointer rounded-md bg-transparent py-2 text-center text-sm font-semibold text-primary-600 hover:underline'
 const INPUT_FIELD =
@@ -595,6 +597,43 @@ export default function App() {
     }
   }
 
+  // Hapus satu data voting (dengan konfirmasi)
+  const handleDeleteVote = async (vote) => {
+    if (!window.confirm(`Hapus suara dari "${vote.nama}" (pilihan: ${vote.pilihan})?`)) return
+
+    setLoading(true)
+    setError('')
+    try {
+      const { error: err } = await supabase.from('votes').delete().eq('id', vote.id)
+      if (err) throw err
+      await fetchAllVotes()
+    } catch (err) {
+      console.error(err)
+      setError('Gagal menghapus data voting.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Hapus SEMUA data voting sekaligus (dengan konfirmasi, karena permanen & tidak bisa dibatalkan)
+  const handleDeleteAllVotes = async () => {
+    if (allVotes.length === 0) return
+    if (!window.confirm(`Hapus SEMUA ${allVotes.length} data voting? Tindakan ini permanen dan tidak bisa dibatalkan.`)) return
+
+    setLoading(true)
+    setError('')
+    try {
+      const { error: err } = await supabase.from('votes').delete().gt('id', 0)
+      if (err) throw err
+      await fetchAllVotes()
+    } catch (err) {
+      console.error(err)
+      setError('Gagal menghapus semua data voting.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // ---------- RENDER: LOGIN ----------
   const renderLogin = () => (
     <div className="fade-in-up flex min-h-screen w-full flex-col items-center justify-center gap-6 p-4">
@@ -798,23 +837,23 @@ export default function App() {
         <p className="py-8 text-center text-base text-text-disabled">Memuat data...</p>
       ) : (
         <>
-          <div className="mb-12 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mb-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {votingResults.map((r) => {
               const StatIcon = getOptionIcon(r.icon)
               return (
-                <div key={r.id} className="rounded-xl border border-neutral-lighter bg-white p-6 text-center shadow-card">
-                  <div className="mb-2 flex justify-center text-primary-600">
-                    <StatIcon size={32} />
+                <div key={r.id} className="rounded-xl border border-neutral-lighter bg-white p-4 text-center shadow-card">
+                  <div className="mb-1.5 flex justify-center text-primary-600">
+                    <StatIcon size={20} />
                   </div>
-                  <h3 className="mb-3 text-lg">{r.title}</h3>
-                  <p className="mb-3 font-heading text-2xl font-extrabold text-primary-600">{r.count} suara</p>
-                  <div className="mb-2 h-2 overflow-hidden rounded-full bg-surface-gray">
+                  <h3 className="mb-1.5 truncate text-sm" title={r.title}>{r.title}</h3>
+                  <p className="mb-2 font-heading text-xl font-extrabold text-primary-600">{r.count} suara</p>
+                  <div className="mb-1.5 h-1.5 overflow-hidden rounded-full bg-surface-gray">
                     <div
                       className="h-full bg-primary-600 transition-[width] duration-500"
                       style={{ width: `${r.percentage}%` }}
                     />
                   </div>
-                  <p className="text-sm text-text-secondary">{r.percentage}%</p>
+                  <p className="text-xs text-text-secondary">{r.percentage}%</p>
                 </div>
               )
             })}
@@ -905,9 +944,14 @@ export default function App() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg">Daftar Voting</h2>
               {allVotes.length > 0 && (
-                <button className={BTN_PRIMARY_SM} onClick={exportCSV}>
-                  <Download size={16} /> Export CSV
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button className={BTN_PRIMARY_SM} onClick={exportCSV}>
+                    <Download size={16} /> Export CSV
+                  </button>
+                  <button className={BTN_DANGER_SM} onClick={handleDeleteAllVotes} disabled={loading}>
+                    <Trash2 size={16} /> Hapus Semua
+                  </button>
+                </div>
               )}
             </div>
 
@@ -922,6 +966,7 @@ export default function App() {
                       <th className="sticky top-0 bg-primary-50 px-4 py-3 text-left text-[13px] font-bold text-primary-700">Nama</th>
                       <th className="sticky top-0 bg-primary-50 px-4 py-3 text-left text-[13px] font-bold text-primary-700">Pilihan</th>
                       <th className="sticky top-0 bg-primary-50 px-4 py-3 text-left text-[13px] font-bold text-primary-700">Waktu</th>
+                      <th className="sticky top-0 bg-primary-50 px-4 py-3 text-right text-[13px] font-bold text-primary-700">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -932,6 +977,11 @@ export default function App() {
                         <td className="border-t border-surface-gray px-4 py-3 text-sm text-text-primary">{v.pilihan}</td>
                         <td className="border-t border-surface-gray px-4 py-3 text-sm text-text-primary">
                           {new Date(v.timestamp).toLocaleString('id-ID')}
+                        </td>
+                        <td className="border-t border-surface-gray px-4 py-3 text-right text-sm">
+                          <button className={ICON_BTN_DANGER} onClick={() => handleDeleteVote(v)} title="Hapus suara ini" disabled={loading}>
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
                     ))}
