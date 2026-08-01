@@ -4,10 +4,15 @@
  * Styling pakai Tailwind CSS (lihat @theme di App.css untuk token warna/radius/shadow).
  */
 import { useState, useEffect, useRef } from 'react'
-import { Vote, Crown, CircleCheckBig, PartyPopper, Pencil, Trash2, Download, ChevronDown } from 'lucide-react'
+import { Vote, Crown, CircleCheckBig, PartyPopper, Pencil, Trash2, Download, ChevronDown, Eye, EyeOff } from 'lucide-react'
 import { supabase } from './supabase'
-import { accounts, adminAccount } from './data'
+import { accounts } from './data'
 import { OPTION_ICONS, getOptionIcon } from './icons'
+
+// Supabase Auth butuh email, tapi admin cuma mau ketik username biasa (mis. "admin").
+// Jadi username di-mapping ke email tetap: "admin" -> "admin@votas-admin.local".
+// Pas bikin user di Supabase Dashboard, EMAIL YANG DIISI HARUS PERSIS hasil mapping ini.
+const ADMIN_EMAIL_DOMAIN = 'votas-admin.local'
 
 // ---------- Kelas tombol yang dipakai berkali-kali (biar JSX tidak penuh string panjang) ----------
 const BTN_PRIMARY =
@@ -26,6 +31,8 @@ const LINK_BUTTON =
   'mt-4 block w-full cursor-pointer rounded-md bg-transparent py-2 text-center text-sm font-semibold text-primary-600 hover:underline'
 const INPUT_FIELD =
   'min-h-11 w-full rounded-md border border-neutral-light px-4 py-3 text-base text-text-primary transition placeholder:text-text-disabled focus:border-primary-600 focus:shadow-focus-ring focus:outline-none'
+const INPUT_FIELD_PW =
+  'min-h-11 w-full rounded-md border border-neutral-light py-3 pl-4 pr-11 text-base text-text-primary transition placeholder:text-text-disabled focus:border-primary-600 focus:shadow-focus-ring focus:outline-none'
 const ERROR_MESSAGE = 'mb-4 rounded-md bg-danger-bg px-3 py-2 text-sm text-danger'
 const ICON_BTN = 'flex items-center justify-center rounded-sm p-2 text-text-tertiary transition-colors hover:bg-surface-gray'
 const ICON_BTN_DANGER = 'flex items-center justify-center rounded-sm p-2 text-danger transition-colors hover:bg-danger-bg'
@@ -282,6 +289,8 @@ export default function App() {
   const [loginData, setLoginData] = useState({ nama: '', password: '' })
   const [adminData, setAdminData] = useState({ username: '', password: '' })
   const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [showStudentPassword, setShowStudentPassword] = useState(false)
+  const [showAdminPassword, setShowAdminPassword] = useState(false)
   const [votingResults, setVotingResults] = useState([]) // statistik per pilihan (+ persentase)
   const [totalVotes, setTotalVotes] = useState(0)
   const [allVotes, setAllVotes] = useState([]) // data mentah semua vote, untuk tabel & export CSV
@@ -318,7 +327,9 @@ export default function App() {
   // Cek apakah nama ini sudah pernah voting
   const checkVoteStatus = async (nama) => {
     try {
-      const { data, error: err } = await supabase.from('votes').select('*').eq('nama', nama).limit(1)
+      // Lewat RPC (SECURITY DEFINER), bukan select langsung — tabel votes sekarang
+      // cuma bisa di-SELECT oleh admin. RPC ini cuma balikin baris punya nama sendiri.
+      const { data, error: err } = await supabase.rpc('check_vote_by_nama', { p_nama: nama })
 
       if (err) throw err
 
@@ -361,22 +372,30 @@ export default function App() {
     setLoading(false)
   }
 
-  // Login admin
+  // Login admin — pakai Supabase Auth beneran (bukan hardcoded lagi).
+  // Username diketik biasa, di-mapping ke email tetap sebelum dikirim ke Supabase Auth.
   const handleAdminLogin = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
-    if (adminData.username === adminAccount.username && adminData.password === adminAccount.password) {
-      setIsAdmin(true)
-      setIsLoggedIn(true)
-      setPage('admin')
-      await fetchVotingOptions()
-      await fetchAllVotes() // fetchAllVotes yang akan matikan loading di akhir
-    } else {
+    const usernameClean = adminData.username.trim().toLowerCase()
+    const { error: authErr } = await supabase.auth.signInWithPassword({
+      email: `${usernameClean}@${ADMIN_EMAIL_DOMAIN}`,
+      password: adminData.password,
+    })
+
+    if (authErr) {
       setError('Username atau password admin salah!')
       setLoading(false)
+      return
     }
+
+    setIsAdmin(true)
+    setIsLoggedIn(true)
+    setPage('admin')
+    await fetchVotingOptions()
+    await fetchAllVotes() // fetchAllVotes yang akan matikan loading di akhir
   }
 
   // Ambil semua data voting untuk dashboard admin (statistik + tabel)
@@ -438,7 +457,8 @@ export default function App() {
   }
 
   // Reset semua state ke default (dipakai tombol Logout)
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut() // no-op kalau yang logout siswa (nggak pernah auth ke Supabase)
     setIsLoggedIn(false)
     setCurrentUser(null)
     setIsAdmin(false)
@@ -677,15 +697,26 @@ export default function App() {
               <label htmlFor="password" className="mb-2 block text-sm font-semibold leading-5 text-text-tertiary">
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                value={loginData.password}
-                onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                placeholder="Masukkan password"
-                required
-                className={INPUT_FIELD}
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showStudentPassword ? 'text' : 'password'}
+                  value={loginData.password}
+                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                  placeholder="Masukkan password"
+                  required
+                  className={INPUT_FIELD_PW}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowStudentPassword((v) => !v)}
+                  className={`${ICON_BTN} absolute right-1 top-1/2 -translate-y-1/2`}
+                  tabIndex={-1}
+                  aria-label={showStudentPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                >
+                  {showStudentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             {error && <p className={ERROR_MESSAGE}>{error}</p>}
             <button type="submit" className={BTN_PRIMARY} disabled={loading}>
@@ -698,11 +729,11 @@ export default function App() {
         ) : (
           <form onSubmit={handleAdminLogin} className="mt-6 border-t border-neutral-lighter pt-6">
             <div className="mb-4">
-              <label htmlFor="username" className="mb-2 block text-sm font-semibold leading-5 text-text-tertiary">
+              <label htmlFor="admin-username" className="mb-2 block text-sm font-semibold leading-5 text-text-tertiary">
                 Username
               </label>
               <input
-                id="username"
+                id="admin-username"
                 type="text"
                 value={adminData.username}
                 onChange={(e) => setAdminData({ ...adminData, username: e.target.value })}
@@ -715,15 +746,26 @@ export default function App() {
               <label htmlFor="admin-password" className="mb-2 block text-sm font-semibold leading-5 text-text-tertiary">
                 Password
               </label>
-              <input
-                id="admin-password"
-                type="password"
-                value={adminData.password}
-                onChange={(e) => setAdminData({ ...adminData, password: e.target.value })}
-                placeholder="Password admin"
-                required
-                className={INPUT_FIELD}
-              />
+              <div className="relative">
+                <input
+                  id="admin-password"
+                  type={showAdminPassword ? 'text' : 'password'}
+                  value={adminData.password}
+                  onChange={(e) => setAdminData({ ...adminData, password: e.target.value })}
+                  placeholder="Password admin"
+                  required
+                  className={INPUT_FIELD_PW}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAdminPassword((v) => !v)}
+                  className={`${ICON_BTN} absolute right-1 top-1/2 -translate-y-1/2`}
+                  tabIndex={-1}
+                  aria-label={showAdminPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                >
+                  {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             {error && <p className={ERROR_MESSAGE}>{error}</p>}
             <button type="submit" className={BTN_ACCENT} disabled={loading}>

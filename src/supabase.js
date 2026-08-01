@@ -8,4 +8,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase env vars belum diatur. Cek file .env kamu (lihat .env.example).')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+})

@@ -673,7 +673,5 @@ export const accounts = [
 // `voting_options` dan dikelola langsung dari Admin Dashboard (tambah/edit/hapus).
 // Lihat supabase-schema.sql untuk seed data awal.
 
-export const adminAccount = {
-  username: 'admin',
-  password: 'mpkvotas2026', // ganti sesuai kebutuhan
-}
+// Akun admin SEKARANG pakai Supabase Auth beneran (Authentication → Users di
+// Supabase Dashboard), bukan hardcoded di sini lagi. Lihat supabase-schema.sql BAGIAN 4.
