@@ -279,7 +279,7 @@ function TopBar() {
 }
 
 // Modal konfirmasi custom (pengganti window.confirm bawaan browser yang tampilannya nggak matching)
-function ConfirmModal({ open, title, message, confirmText, onConfirm, onCancel }) {
+function ConfirmModal({ open, title, message, confirmText, danger = true, icon: Icon = Trash2, onConfirm, onCancel }) {
   useEffect(() => {
     if (!open) return
     const onKeyDown = (e) => e.key === 'Escape' && onCancel()
@@ -298,8 +298,12 @@ function ConfirmModal({ open, title, message, confirmText, onConfirm, onCancel }
         className="fade-in-up w-full max-w-sm rounded-xl bg-white p-6 text-center shadow-elevated"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger-bg text-danger">
-          <Trash2 size={22} />
+        <div
+          className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full ${
+            danger ? 'bg-danger-bg text-danger' : 'bg-primary-50 text-primary-600'
+          }`}
+        >
+          <Icon size={22} />
         </div>
         <h3 className="mb-2 text-lg">{title}</h3>
         <p className="mb-6 text-sm leading-6 text-text-secondary">{message}</p>
@@ -307,7 +311,7 @@ function ConfirmModal({ open, title, message, confirmText, onConfirm, onCancel }
           <button className={`${BTN_GRAY} flex-1`} onClick={onCancel}>
             Batal
           </button>
-          <button className={`${BTN_DANGER} flex-1`} onClick={onConfirm} autoFocus>
+          <button className={`${danger ? BTN_DANGER : BTN_PRIMARY} flex-1`} onClick={onConfirm} autoFocus>
             {confirmText}
           </button>
         </div>
@@ -468,8 +472,20 @@ export default function App() {
     }
   }
 
-  // Simpan pilihan voting siswa
-  const handleVote = async (option) => {
+  // Klik "Pilih" -> tampilkan modal konfirmasi dulu, belum langsung submit ke Supabase
+  const handleVote = (option) => {
+    setConfirmDialog({
+      title: 'Konfirmasi Pilihan',
+      message: `Yakin mau pilih "${option.title}"? Setelah dikonfirmasi, pilihan tidak bisa diubah lagi.`,
+      confirmText: 'Ya, Pilih Ini',
+      danger: false,
+      icon: CircleCheckBig,
+      onConfirm: () => doVote(option),
+    })
+  }
+
+  const doVote = async (option) => {
+    setConfirmDialog(null)
     setLoading(true)
     setError('')
     try {
