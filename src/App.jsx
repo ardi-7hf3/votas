@@ -1152,6 +1152,8 @@ export default function App() {
         title={confirmDialog?.title}
         message={confirmDialog?.message}
         confirmText={confirmDialog?.confirmText}
+        danger={confirmDialog?.danger}
+        icon={confirmDialog?.icon}
         onConfirm={confirmDialog?.onConfirm}
         onCancel={() => setConfirmDialog(null)}
       />
