@@ -234,7 +234,7 @@ export const accounts = [
   { nama: "Andhika Prasetyo", password: "VOTING" },
   { nama: "Andi Reval Zohir", password: "VOTING" },
   { nama: "Anisya Avrillya Yudha", password: "VOTING" },
-  { nama: "Aqila Al-Fadhilah", password: "VOTING" },
+  { nama: "Aqila Al Fadhilah", password: "VOTING" },
   { nama: "Azril Ardiansyah Febriyanto", password: "VOTING" },
   { nama: "Chantika Bella", password: "VOTING" },
   { nama: "Dhea Zaskia", password: "VOTING" },
