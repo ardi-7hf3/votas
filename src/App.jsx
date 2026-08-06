@@ -245,6 +245,47 @@ function LombaInfo({ option }) {
   )
 }
 
+// Dropdown untuk menampilkan referensi (cara bermain + video) dari pilihan LAIN,
+// selain pilihan yang sudah divoting akun ini. Dipakai di halaman "Sudah Voting"
+// dan "Suara Berhasil Tersimpan" — supaya siswa tetap bisa lihat referensi lomba lain.
+function OtherOptionsInfo({ options, excludeId }) {
+  const [expanded, setExpanded] = useState(false)
+  const others = (options || []).filter(
+    (o) => o.id !== excludeId && (o.cara_bermain?.trim() || o.aturan_referensi?.trim())
+  )
+
+  if (others.length === 0) return null
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="mx-auto flex items-center gap-1.5 text-sm font-semibold text-primary-600 hover:underline"
+      >
+        Lihat Referensi Lomba Lainnya
+        <ChevronDown size={16} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+      {expanded && (
+        <div className="mt-3 space-y-3 text-left">
+          {others.map((option) => {
+            const OptionIcon = getOptionIcon(option.icon)
+            return (
+              <div key={option.id} className="rounded-lg border border-neutral-lighter p-3">
+                <div className="mb-2 flex items-center justify-center gap-2 text-primary-600 sm:justify-start">
+                  <OptionIcon size={18} />
+                  <span className="text-sm font-bold text-text-primary">{option.title}</span>
+                </div>
+                <LombaInfo option={option} />
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Satu kartu pilihan voting (dipisah jadi komponen sendiri supaya dropdown info-nya
 // punya state buka/tutup masing-masing, independen antar kartu).
 function VoteCard({ option, number, loading, onVote }) {
@@ -918,6 +959,9 @@ export default function App() {
             <div className="mb-6">
               <LombaInfo option={votedOption} />
             </div>
+            <div className="mb-6">
+              <OtherOptionsInfo options={votingOptions} excludeId={votedOption?.id} />
+            </div>
             <p className="mb-6 text-base text-text-secondary">Terima kasih telah berpartisipasi!</p>
             <button className={BTN_GRAY} onClick={handleLogout}>
               Logout
@@ -946,6 +990,9 @@ export default function App() {
             </div>
             <div className="mb-6">
               <LombaInfo option={votedOption} />
+            </div>
+            <div className="mb-6">
+              <OtherOptionsInfo options={votingOptions} excludeId={votedOption?.id} />
             </div>
             <p className="mb-6 text-base text-text-secondary">Suara Anda sangat berarti untuk kami!</p>
             <button className={BTN_GRAY} onClick={handleLogout}>
