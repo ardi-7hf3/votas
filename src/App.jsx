@@ -247,13 +247,16 @@ function LombaInfo({ option }) {
 
 // Satu kartu pilihan voting (dipisah jadi komponen sendiri supaya dropdown info-nya
 // punya state buka/tutup masing-masing, independen antar kartu).
-function VoteCard({ option, loading, onVote }) {
+function VoteCard({ option, number, loading, onVote }) {
   const OptionIcon = getOptionIcon(option.icon)
   return (
     <div
-      className="cursor-pointer rounded-xl border border-neutral-lighter bg-white p-6 text-center shadow-card transition duration-200 hover:-translate-y-1 hover:border-primary-300 hover:shadow-elevated"
+      className="relative cursor-pointer rounded-xl border border-neutral-lighter bg-white p-6 text-center shadow-card transition duration-200 hover:-translate-y-1 hover:border-primary-300 hover:shadow-elevated"
       onClick={() => !loading && onVote(option)}
     >
+      <span className="absolute left-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-primary-600 text-xs font-bold text-white">
+        {number}
+      </span>
       <div className="mb-3 flex justify-center text-primary-600">
         <OptionIcon size={40} />
       </div>
@@ -878,8 +881,8 @@ export default function App() {
           <p className={EMPTY_TEXT}>Pilihan voting belum tersedia. Coba refresh halaman.</p>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-            {votingOptions.map((option) => (
-              <VoteCard key={option.id} option={option} loading={loading} onVote={handleVote} />
+            {votingOptions.map((option, index) => (
+              <VoteCard key={option.id} option={option} number={index + 1} loading={loading} onVote={handleVote} />
             ))}
           </div>
         )}
@@ -981,10 +984,13 @@ export default function App() {
       ) : (
         <>
           <div className="mb-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {votingResults.map((r) => {
+            {votingResults.map((r, index) => {
               const StatIcon = getOptionIcon(r.icon)
               return (
-                <div key={r.id} className="rounded-xl border border-neutral-lighter bg-white p-4 text-center shadow-card">
+                <div key={r.id} className="relative rounded-xl border border-neutral-lighter bg-white p-4 text-center shadow-card">
+                  <span className="absolute left-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] font-bold text-white">
+                    {index + 1}
+                  </span>
                   <div className="mb-1.5 flex justify-center text-primary-600">
                     <StatIcon size={20} />
                   </div>
