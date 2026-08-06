@@ -4,6 +4,7 @@
  * Styling pakai Tailwind CSS (lihat @theme di App.css untuk token warna/radius/shadow).
  */
 import { useState, useEffect, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import { Vote, Crown, CircleCheckBig, PartyPopper, Pencil, Trash2, Download, ChevronDown, Eye, EyeOff } from 'lucide-react'
 import { supabase } from './supabase'
 import { accounts } from './data'
@@ -583,25 +584,20 @@ export default function App() {
     window.history.pushState({}, '', '/')
   }
 
-  // Export tabel voting ke CSV (fitur opsional admin)
-  const exportCSV = () => {
-    const header = ['No', 'Nama', 'Pilihan', 'Waktu']
-    const rows = allVotes.map((v, i) => [
-      i + 1,
-      `"${v.nama}"`,
-      `"${v.pilihan}"`,
-      `"${new Date(v.timestamp).toLocaleString('id-ID')}"`,
-    ])
-    const csvContent = [header, ...rows].map((r) => r.join(',')).join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', 'hasil_voting.csv')
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+  // Export tabel voting ke file Excel (.xlsx) asli — bukan .csv teks biasa, supaya
+  // langsung kebuka jadi tabel di HP/aplikasi apapun (bukan malah kebuka sebagai teks polos).
+  const exportExcel = () => {
+    const rows = allVotes.map((v, i) => ({
+      No: i + 1,
+      Nama: v.nama,
+      Pilihan: v.pilihan,
+      Waktu: new Date(v.timestamp).toLocaleString('id-ID'),
+    }))
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    worksheet['!cols'] = [{ wch: 5 }, { wch: 32 }, { wch: 24 }, { wch: 20 }]
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Hasil Voting')
+    XLSX.writeFile(workbook, 'hasil_voting.xlsx')
   }
 
   // Reset form tambah/edit pilihan voting
@@ -1141,8 +1137,8 @@ export default function App() {
               <h2 className="text-lg">Daftar Voting</h2>
               {allVotes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  <button className={BTN_PRIMARY_SM} onClick={exportCSV}>
-                    <Download size={16} /> Export CSV
+                  <button className={BTN_PRIMARY_SM} onClick={exportExcel}>
+                    <Download size={16} /> Export Excel
                   </button>
                   <button className={BTN_DANGER_SM} onClick={handleDeleteAllVotes} disabled={loading}>
                     <Trash2 size={16} /> Hapus Semua
