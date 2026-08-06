@@ -1026,6 +1026,57 @@ export default function App() {
         <p className="py-8 text-center text-base text-text-disabled">Memuat data...</p>
       ) : (
         <>
+          <div className="mb-8 rounded-xl border border-neutral-lighter bg-white p-6 shadow-card">
+            <h2 className="mb-4 flex items-center gap-2 text-lg">
+              <Crown size={20} className="text-primary-600" /> Ranking Lomba
+            </h2>
+            {votingResults.length === 0 ? (
+              <p className={EMPTY_TEXT}>Belum ada data voting.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {[...votingResults]
+                  .sort((a, b) => b.count - a.count)
+                  .map((r, index) => {
+                    const RankIcon = getOptionIcon(r.icon)
+                    const rank = index + 1
+                    const cardStyle =
+                      rank === 1
+                        ? 'border-amber-300 bg-amber-50'
+                        : rank === 2
+                          ? 'border-slate-300 bg-slate-50'
+                          : rank === 3
+                            ? 'border-orange-300 bg-orange-50'
+                            : 'border-neutral-lighter bg-white'
+                    const badgeStyle =
+                      rank === 1 ? 'bg-amber-500' : rank === 2 ? 'bg-slate-400' : rank === 3 ? 'bg-orange-500' : 'bg-neutral-light'
+                    return (
+                      <div key={r.id} className={`flex items-center gap-3 rounded-lg border p-3 transition ${cardStyle}`}>
+                        <span
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white ${badgeStyle}`}
+                        >
+                          {rank}
+                        </span>
+                        <RankIcon size={20} className="shrink-0 text-primary-600" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-text-primary">{r.title}</p>
+                          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-gray">
+                            <div
+                              className="h-full bg-primary-600 transition-[width] duration-500"
+                              style={{ width: `${r.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="font-heading text-lg font-extrabold text-primary-600">{r.count}</p>
+                          <p className="text-xs text-text-secondary">{r.percentage}%</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
+          </div>
+
           <div className="mb-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {votingResults.map((r, index) => {
               const StatIcon = getOptionIcon(r.icon)
