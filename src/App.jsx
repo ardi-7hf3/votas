@@ -376,7 +376,7 @@ export default function App() {
   const [error, setError] = useState('')
   const [loginData, setLoginData] = useState({ nama: '', password: '' })
   const [adminData, setAdminData] = useState({ username: '', password: '' })
-  const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [showAdminLogin, setShowAdminLogin] = useState(() => window.location.pathname.startsWith('/admin'))
   const [showStudentPassword, setShowStudentPassword] = useState(false)
   const [showAdminPassword, setShowAdminPassword] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState(null) // { title, message, confirmText, onConfirm } | null
@@ -580,6 +580,7 @@ export default function App() {
   const toggleAdminLogin = () => {
     setShowAdminLogin((prev) => !prev)
     setError('')
+    window.history.pushState({}, '', '/')
   }
 
   // Export tabel voting ke CSV (fitur opsional admin)
@@ -800,7 +801,9 @@ export default function App() {
         <h1 className="mb-2 flex items-center justify-center gap-2.5 text-center text-2xl leading-tight sm:text-[30px]">
           <Vote size={28} strokeWidth={2.5} /> SISTEM VOTING
         </h1>
-        <p className="mb-6 text-center text-base text-text-secondary">Masuk untuk memberikan suaramu</p>
+        <p className="mb-6 text-center text-base text-text-secondary">
+          {showAdminLogin ? 'Masuk ke panel admin' : 'Masuk untuk memberikan suaramu'}
+        </p>
 
         {!showAdminLogin ? (
           <form onSubmit={handleLogin}>
@@ -846,9 +849,6 @@ export default function App() {
             {error && <p className={ERROR_MESSAGE}>{error}</p>}
             <button type="submit" className={BTN_PRIMARY} disabled={loading}>
               {loading ? 'Memproses...' : 'Login'}
-            </button>
-            <button type="button" className={LINK_BUTTON} onClick={toggleAdminLogin}>
-              Login sebagai Admin
             </button>
           </form>
         ) : (
